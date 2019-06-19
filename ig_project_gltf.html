@@ -1,0 +1,830 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <title>three.js webgl - FBX loader</title>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
+    <link type="text/css" rel="stylesheet" href="main.css">
+</head>
+
+<body>
+    <script src="../build/three.js"></script>
+
+    <script src="js/libs/inflate.min.js"></script>
+    <script src="js/loaders/GLTFLoader.js"></script>
+
+    <script src="js/controls/OrbitControls.js"></script>
+
+    <script src="js/WebGL.js"></script>
+    <script src="js/libs/stats.min.js"></script>
+    <script src="js/libs/dat.gui.min.js"></script>
+
+    <script>
+
+
+        if (WEBGL.isWebGLAvailable() === false) {
+
+            document.body.appendChild(WEBGL.getWebGLErrorMessage());
+
+        }
+
+
+
+        let flag = false;
+
+        var container, stats, controls;
+        var camera, scene, renderer, light;
+
+        var clock = new THREE.Clock();
+
+        var mixer;                      // THREE.ActionMixer()
+
+        var bone_structure = [];
+
+        // Simplified Structure
+        var bss = [];                   // Bone Structure Reduced to 19 Bones
+        var bss_quaternions = [];       // Fetch their quaternions
+        var bss_rotations = [];         // Rotations
+
+        // Calculate the difference of quaternions of each pose using these arrays.
+        var poseFrom = [];
+        var poseTo = [];
+
+        var t_loader = new THREE.TextureLoader();
+
+        var rootNode;
+        var rightArm;
+
+        var jsonData;
+
+        init();
+        animate();
+
+
+
+        var MODEL_SCALE = 70;
+
+        /*
+        obj   -> bss array 
+        returned array's indices: 0-> whole quaternion object, 1-> only w, 2-> only x, 3-> only y, 4->only z 
+        */
+        function quaternion_snapshot(obj, index) {
+            return [obj[index].quaternion, obj[index].quaternion.w, obj[index].quaternion.x, obj[index].quaternion.y, obj[index].quaternion.z];
+        }
+
+
+        /*
+        obj   -> bss array 
+        returned array's indices: 0-> whole Euler rotation object , 1-> only x, 2-> only y, 3-> only z
+        */
+        function rotation_snapshot(obj, index) {
+            return [obj[index].rotation, obj[index].rotation.x, obj[index].rotation.y, obj[index].rotation.z];
+        }
+
+        function init() {
+            container = document.createElement('div');
+            document.body.appendChild(container);
+
+
+            var grassTexture = t_loader.load('textures/floors/grasslight-small.jpg', function (texture) {
+                texture.wrapS = texture.wrapT = THREE.RepeatWrapping;
+                texture.offset.set(0, 0);
+                texture.repeat.set(1, 512);
+            });
+
+
+
+            camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 1, 2000);
+            camera.position.set(100, 200, 300);
+
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color(0xa0a0a0);
+            scene.fog = new THREE.Fog(0xa0a0a0, 200, 1000);
+
+            light = new THREE.HemisphereLight(0xffffff, 0x444444);
+            light.position.set(0, 200, 0);
+            scene.add(light);
+
+            light = new THREE.DirectionalLight(0xffffff);
+            light.position.set(0, 200, 100);
+            light.castShadow = true;
+            light.shadow.camera.top = 180;
+            light.shadow.camera.bottom = - 100;
+            light.shadow.camera.left = - 120;
+            light.shadow.camera.right = 120;
+            scene.add(light);
+
+            // ground
+            floor = new THREE.Mesh(
+                new THREE.PlaneGeometry(100, 100000, 8, 8),
+                new THREE.MeshLambertMaterial({
+                    map: grassTexture
+                }));
+            floor.rotation.x -= Math.PI / 2;
+            floor.position.y -= 1
+            scene.add(floor);
+
+            var grid = new THREE.GridHelper(2000, 20, 0x000000, 0x000000);
+            grid.material.opacity = 0.2;
+            grid.material.transparent = true;
+            scene.add(grid);
+
+            // model
+            var loader = new THREE.GLTFLoader();
+
+            loader.load('models/gltf/FuseModel.glb', function (gltf) {
+
+                const model = gltf.scene;
+                model.scale.set(MODEL_SCALE, MODEL_SCALE, MODEL_SCALE);
+
+                // Böyle de bir şey var
+                // rightArm = model.getObjectByName( 'mixamorigRightArm' );
+
+                model.children[0].children[0].traverse((bone) => {
+                    bone_structure.push(bone);
+                }
+
+
+                )
+
+                //#region simplify_bone_structure
+                // NAME               // INDEX
+                bss.push(bone_structure[0]);                  // Hips               //  0
+                bss.push(bone_structure[1]);                  // Spine              //  1  
+                bss.push(bone_structure[2]);                  // Spine1             //  2
+                bss.push(bone_structure[3]);                  // Spine2             //  3
+                bss.push(bone_structure[4]);                  // LeftShoulder       //  4
+                bss.push(bone_structure[5]);                  // LeftArm            //  5
+                bss.push(bone_structure[6]);                  // LeftForeArm        //  6
+                bss.push(bone_structure[28]);                 // RightShoulder      //  7
+                bss.push(bone_structure[29]);                 // RightArm           //  8
+                bss.push(bone_structure[30]);                 // RightForeArm       //  9
+                bss.push(bone_structure[53]);                 // Head               //  10
+                bss.push(bone_structure[57]);                 // RightUpLeg         //  11
+                bss.push(bone_structure[58]);                 // RightLeg           //  12
+                bss.push(bone_structure[59]);                 // RightFoot          //  13
+                bss.push(bone_structure[60]);                 // RightToeBase       //  14
+                bss.push(bone_structure[62]);                 // LeftUpLeg          //  15
+                bss.push(bone_structure[63]);                 // LeftLeg            //  16
+                bss.push(bone_structure[64]);                 // LeftFoot           //  17
+                bss.push(bone_structure[65]);                 // LeftToeBase        //  18
+                //#endregion
+
+
+                for (key in bss) {
+                    bss_quaternions.push(bss[key].quaternion);
+                }
+
+                //console.log(model);
+
+                scene.add(model);
+
+                var fileLoader = new THREE.FileLoader();
+
+                fileLoader.load(
+                    // resource URL
+                    'data.json',
+
+                    // onLoad callback
+                    function (data) {
+                        // output the text to the console
+                        jsonData = JSON.parse(data);
+                        
+                    },
+
+                    // onProgress callback
+                    function (xhr) {
+                        console.log((xhr.loaded / xhr.total * 100) + '% loaded');
+                    },
+
+                    // onError callback
+                    function (err) {
+                        console.error('An error happened');
+                    }
+                );
+
+
+
+
+                var snapShotFeed = function () {
+
+                    // Snapshots
+                    this.first = function () {
+
+                        for (i in bss_quaternions) {
+                            poseFrom[i] = bss_quaternions[i].clone();
+                        }
+
+                        console.log("poseFrom bu", poseFrom);
+                    }
+
+                    this.second = function () {
+
+                        for (i in bss_quaternions) {
+                            poseTo[i] = bss_quaternions[i].clone();
+                        }
+
+                        if (poseFrom === poseTo) {
+                            alert("Initial pose and final pose are same.");
+                        }
+
+                        console.log("poseTo bu ", poseTo);
+
+                    }
+
+                    this.setToFirst = function () {
+                        for (i in bss_quaternions) {
+                            bss_quaternions[i].copy(poseFrom[i]);
+                        }
+                    }
+
+                    this.interpolate = function () {
+                        flag = !flag;
+                        console.log(flag);
+                    }
+
+                    this.download = function () {
+                        const link = document.createElement('a');
+                        console.log(link);
+                        link.style.display = 'none';
+                        document.body.appendChild(link);
+
+
+                        const blob = new Blob([JSON.stringify(bss_quaternions)], { type: 'text/plain' });
+                        const objectURL = URL.createObjectURL(blob);
+
+                        console.log(blob,objectURL);
+
+                        link.href = objectURL;
+                        link.href = URL.createObjectURL(blob);
+                        link.download = 'data.json';
+                        link.click();
+                    }
+                }
+
+                var feed = function () {
+                    for (const key in bss) {
+                        bss_rotations.push(bss[key].rotation);
+                    }
+
+                    //#region InitGuiVariables
+
+
+
+                    // Left Shoulder
+                    this.ls_rotx = bss_rotations[4].x;
+                    this.ls_roty = bss_rotations[4].y;
+                    this.ls_rotz = bss_rotations[4].z;
+
+                    // Left Arm
+                    this.la_rotx = bss_rotations[5].x;
+                    this.la_roty = bss_rotations[5].y;
+                    this.la_rotz = bss_rotations[5].z;
+
+                    // Left ForeArm
+                    this.lfa_rotx = bss_rotations[6].x;
+                    this.lfa_roty = bss_rotations[6].y;
+                    this.lfa_rotz = bss_rotations[6].z;
+
+                    //Right Shoulder 7
+                    this.rs_rotx = bss_rotations[7].x;
+                    this.rs_roty = bss_rotations[7].y;
+                    this.rs_rotz = bss_rotations[7].z;
+
+                    //Right Arm 8
+                    this.ra_rotx = bss_rotations[8].x;
+                    this.ra_roty = bss_rotations[8].y;
+                    this.ra_rotz = bss_rotations[8].z;
+
+                    //Right ForeArm 9
+                    this.rfa_rotx = bss_rotations[9].x;
+                    this.rfa_roty = bss_rotations[9].y;
+                    this.rfa_rotz = bss_rotations[9].z;
+
+                    //Head 10
+                    this.h_rotx = bss_rotations[10].x;
+                    this.h_roty = bss_rotations[10].y;
+                    this.h_rotz = bss_rotations[10].z;
+
+                    //RightUpLeg 11
+                    this.rul_rotx = bss_rotations[11].x;
+                    this.rul_roty = bss_rotations[11].y;
+                    this.rul_rotz = bss_rotations[11].z;
+
+                    //RightLeg 12
+                    this.rl_rotx = bss_rotations[12].x;
+                    this.rl_roty = bss_rotations[12].y;
+                    this.rl_rotz = bss_rotations[12].z;
+
+                    //RightFoot 13
+                    this.rf_rotx = bss_rotations[13].x;
+                    this.rf_roty = bss_rotations[13].y;
+                    this.rf_rotz = bss_rotations[13].z;
+
+                    //RightToeBase 14
+                    this.rtb_rotx = bss_rotations[14].x;
+                    this.rtb_roty = bss_rotations[14].y;
+                    this.rtb_rotz = bss_rotations[14].z;
+
+                    //LeftUpLeg 15
+                    this.lul_rotx = bss_rotations[15].x;
+                    this.lul_roty = bss_rotations[15].y;
+                    this.lul_rotz = bss_rotations[15].z;
+
+                    //LeftLeg 16
+                    this.ll_rotx = bss_rotations[16].x;
+                    this.ll_roty = bss_rotations[16].y;
+                    this.ll_rotz = bss_rotations[16].z;
+
+                    //LeftFoot 17
+                    this.lf_rotx = bss_rotations[17].x;
+                    this.lf_roty = bss_rotations[17].y;
+                    this.lf_rotz = bss_rotations[17].z;
+
+                    //LeftToeBase 18
+                    this.ltb_rotx = bss_rotations[18].x;
+                    this.ltb_roty = bss_rotations[18].y;
+                    this.ltb_rotz = bss_rotations[18].z;
+
+                    //Spine 1
+                    this.s_rotx = bss_rotations[1].x;
+                    this.s_roty = bss_rotations[1].y;
+                    this.s_rotz = bss_rotations[1].z;
+
+                    //Spine1 2
+                    this.s1_rotx = bss_rotations[2].x;
+                    this.s1_roty = bss_rotations[2].y;
+                    this.s1_rotz = bss_rotations[2].z;
+
+                    //Spine2 3 
+                    this.s2_rotx = bss_rotations[3].x;
+                    this.s2_roty = bss_rotations[3].y;
+                    this.s2_rotz = bss_rotations[3].z;
+
+                    //#endregion
+
+                };
+
+                //#region GUI Event Handlers 
+
+                //#region GUI Variables
+                var GUIData = new feed();
+                var snapData = new snapShotFeed();
+                var panel = new dat.GUI();
+                //#endregion
+
+                //LeftShoulder
+                //#region
+                var folder1 = panel.addFolder('Left Shoulder (index -> 4)');
+                folder1.add(GUIData, 'ls_rotx', -2, 2).listen().onChange(
+                    function (value) {
+                        bss_rotations[4].x = value;
+                    }
+                );
+                folder1.add(GUIData, 'ls_roty', -2, 2).listen().onChange(
+                    function (value) {
+                        bss_rotations[4].y = value;
+                    }
+                );
+                folder1.add(GUIData, 'ls_rotz', -2, 2).listen().onChange(
+                    function (value) {
+                        bss_rotations[4].z = value;
+                    }
+                );
+                //#endregion
+
+                //LeftArm
+                //#region
+                var folder2 = panel.addFolder('Left Arm (index -> 5)');
+                folder2.add(GUIData, 'la_rotx', -2, 2).listen().onChange(
+                    function (value) {
+                        bss_rotations[5].x = value;
+                    }
+                );
+                folder2.add(GUIData, 'la_roty', -2, 2).listen().onChange(
+                    function (value) {
+                        bss_rotations[5].y = value;
+                    }
+                );
+                folder2.add(GUIData, 'la_rotz', -2, 2).listen().onChange(
+                    function (value) {
+                        bss_rotations[5].z = value;
+                    }
+                );
+                //#endregion
+
+                //LeftForeArm
+                //#region
+                var folder3 = panel.addFolder('Left ForeArm (index -> 6)');
+                folder3.add(GUIData, 'lfa_rotx', -2, 2).listen().onChange(
+                    function (value) {
+                        bss_rotations[6].x = value;
+                    }
+                );
+                folder3.add(GUIData, 'lfa_roty', -2, 2).listen().onChange(
+                    function (value) {
+                        bss_rotations[6].y = value;
+                    }
+                );
+                folder3.add(GUIData, 'lfa_rotz', -2, 2).listen().onChange(
+                    function (value) {
+                        bss_rotations[6].z = value;
+                    }
+                );
+                //#endregion
+
+                //RightShoulder
+                //#region
+                var folder4 = panel.addFolder('Right Shoulder (index -> 7)');
+                folder4.add(GUIData, 'rs_rotx', -2, 2).listen().onChange(
+                    function (value) {
+                        bss_rotations[7].x = value;
+                    }
+                );
+                folder4.add(GUIData, 'rs_roty', -2, 2).listen().onChange(
+                    function (value) {
+                        bss_rotations[7].y = value;
+                    }
+                );
+                folder4.add(GUIData, 'rs_rotz', -2, 2).listen().onChange(
+                    function (value) {
+                        bss_rotations[7].z = value;
+                    }
+                );
+                //#endregion
+
+                //RightArm
+                //#region
+                var folder5 = panel.addFolder('Right Arm (index -> 8)');
+                folder5.add(GUIData, 'ra_rotx', -2, 2).listen().onChange(
+                    function (value) {
+                        bss_rotations[8].x = value;
+                    }
+                );
+                folder5.add(GUIData, 'ra_roty', -2, 2).listen().onChange(
+                    function (value) {
+                        bss_rotations[8].y = value;
+                    }
+                );
+                folder5.add(GUIData, 'ra_rotz', -2, 2).listen().onChange(
+                    function (value) {
+                        bss_rotations[8].z = value;
+                    }
+                );
+                //#endregion
+
+                //RightForeArm
+                //#region
+                var folder6 = panel.addFolder('Right ForeArm (index -> 9)');
+                folder6.add(GUIData, 'rfa_rotx', -2, 2).listen().onChange(
+                    function (value) {
+                        bss_rotations[9].x = value;
+                    }
+                );
+                folder6.add(GUIData, 'rfa_roty', -2, 2).listen().onChange(
+                    function (value) {
+                        bss_rotations[9].y = value;
+                    }
+                );
+                folder6.add(GUIData, 'rfa_rotz', -2, 2).listen().onChange(
+                    function (value) {
+                        bss_rotations[9].z = value;
+                    }
+                );
+                //#endregion
+
+                //Head
+                //#region
+                var folder7 = panel.addFolder('Head (index -> 10)');
+                folder7.add(GUIData, 'h_rotx', -2, 2).listen().onChange(
+                    function (value) {
+                        bss_rotations[10].x = value;
+                    }
+                );
+                folder7.add(GUIData, 'h_roty', -2, 2).listen().onChange(
+                    function (value) {
+                        bss_rotations[10].y = value;
+                    }
+                );
+                folder7.add(GUIData, 'h_rotz', -2, 2).listen().onChange(
+                    function (value) {
+                        bss_rotations[10].z = value;
+                    }
+                );
+                //#endregion
+
+                //RightUpLeg
+                //#region
+                var folder8 = panel.addFolder('RightUpLeg (index -> 11)');
+                folder8.add(GUIData, 'rul_rotx', -2, 2).listen().onChange(
+                    function (value) {
+                        bss_rotations[11].x = value;
+                    }
+                );
+                folder8.add(GUIData, 'rul_roty', -2, 2).listen().onChange(
+                    function (value) {
+                        bss_rotations[11].y = value;
+                    }
+                );
+                folder8.add(GUIData, 'rul_rotz', -5, 5).listen().onChange(
+                    function (value) {
+                        bss_rotations[11].z = value;
+                    }
+                );
+                //#endregion
+
+                //RightLeg
+                //#region
+                var folder9 = panel.addFolder('RightLeg (index -> 12)');
+                folder9.add(GUIData, 'rl_rotx', -2, 2).listen().onChange(
+                    function (value) {
+                        bss_rotations[12].x = value;
+                    }
+                );
+                folder9.add(GUIData, 'rl_roty', -2, 2).listen().onChange(
+                    function (value) {
+                        bss_rotations[12].y = value;
+                    }
+                );
+                folder9.add(GUIData, 'rl_rotz', -5, 5).listen().onChange(
+                    function (value) {
+                        bss_rotations[12].z = value;
+                    }
+                );
+                //#endregion
+
+                //RightFoot
+                //#region
+                var folder10 = panel.addFolder('RightFoot (index -> 13)');
+                folder10.add(GUIData, 'rf_rotx', -2, 2).listen().onChange(
+                    function (value) {
+                        bss_rotations[13].x = value;
+                    }
+                );
+                folder10.add(GUIData, 'rf_roty', -2, 2).listen().onChange(
+                    function (value) {
+                        bss_rotations[13].y = value;
+                    }
+                );
+                folder10.add(GUIData, 'rf_rotz', -5, 5).listen().onChange(
+                    function (value) {
+                        bss_rotations[13].z = value;
+                    }
+                );
+                //#endregion
+
+                //RightToeBase
+                //#region
+                var folder11 = panel.addFolder('RightToeBase (index -> 14)');
+                folder11.add(GUIData, 'rtb_rotx', -2, 2).listen().onChange(
+                    function (value) {
+                        bss_rotations[14].x = value;
+                    }
+                );
+                folder11.add(GUIData, 'rtb_roty', -2, 2).listen().onChange(
+                    function (value) {
+                        bss_rotations[14].y = value;
+                    }
+                );
+                folder11.add(GUIData, 'rtb_rotz', -5, 5).listen().onChange(
+                    function (value) {
+                        bss_rotations[14].z = value;
+                    }
+                );
+                //#endregion
+
+                //LeftUpLeg
+                //#region
+                var folder12 = panel.addFolder('LeftUpLeg (index -> 15)');
+                folder12.add(GUIData, 'lul_rotx', -2, 2).listen().onChange(
+                    function (value) {
+                        bss_rotations[15].x = value;
+                    }
+                );
+                folder12.add(GUIData, 'lul_roty', -2, 2).listen().onChange(
+                    function (value) {
+                        bss_rotations[15].y = value;
+                    }
+                );
+                folder12.add(GUIData, 'lul_rotz', -5, 5).listen().onChange(
+                    function (value) {
+                        bss_rotations[15].z = value;
+                    }
+                );
+                //#endregion
+
+                //LeftLeg
+                //#region
+                var folder13 = panel.addFolder('LeftLeg (index -> 16)');
+                folder13.add(GUIData, 'll_rotx', -2, 2).listen().onChange(
+                    function (value) {
+                        bss_rotations[16].x = value;
+                    }
+                );
+                folder13.add(GUIData, 'll_roty', -2, 2).listen().onChange(
+                    function (value) {
+                        bss_rotations[16].y = value;
+                    }
+                );
+                folder13.add(GUIData, 'll_rotz', -5, 5).listen().onChange(
+                    function (value) {
+                        bss_rotations[16].z = value;
+                    }
+                );
+                //#endregion
+
+                //LeftFoot
+                //#region
+                var folder14 = panel.addFolder('LeftFoot (index -> 17)');
+                folder14.add(GUIData, 'lf_rotx', -2, 2).listen().onChange(
+                    function (value) {
+                        bss_rotations[17].x = value;
+                    }
+                );
+                folder14.add(GUIData, 'lf_roty', -2, 2).listen().onChange(
+                    function (value) {
+                        bss_rotations[17].y = value;
+                    }
+                );
+                folder14.add(GUIData, 'lf_rotz', -5, 5).listen().onChange(
+                    function (value) {
+                        bss_rotations[17].z = value;
+                    }
+                );
+                //#endregion
+
+                //LeftToeBase
+                //#region
+                var folder15 = panel.addFolder('LeftToeBase (index -> 18)');
+                folder15.add(GUIData, 'ltb_rotx', -2, 2).listen().onChange(
+                    function (value) {
+                        bss_rotations[18].x = value;
+                    }
+                );
+                folder15.add(GUIData, 'ltb_roty', -2, 2).listen().onChange(
+                    function (value) {
+                        bss_rotations[18].y = value;
+                    }
+                );
+                folder15.add(GUIData, 'ltb_rotz', -5, 5).listen().onChange(
+                    function (value) {
+                        bss_rotations[18].z = value;
+                    }
+                );
+                //#endregion
+
+                //#region Spine
+                var folder16 = panel.addFolder('Spine (index -> 1)');
+                folder16.add(GUIData, 's_rotx', -2, 2).listen().onChange(
+                    function (value) {
+                        bss_rotations[1].x = value;
+                    }
+                );
+                folder16.add(GUIData, 's_roty', -2, 2).listen().onChange(
+                    function (value) {
+                        bss_rotations[1].y = value;
+                    }
+                );
+                folder16.add(GUIData, 's_rotz', -5, 5).listen().onChange(
+                    function (value) {
+                        bss_rotations[1].z = value;
+                    }
+                );
+                //#endregion
+
+                //#region Spine1
+                var folder17 = panel.addFolder('Spine1 (index -> 2)');
+                folder17.add(GUIData, 's1_rotx', -2, 2).listen().onChange(
+                    function (value) {
+                        bss_rotations[2].x = value;
+                    }
+                );
+                folder17.add(GUIData, 's1_roty', -2, 2).listen().onChange(
+                    function (value) {
+                        bss_rotations[2].y = value;
+                    }
+                );
+                folder17.add(GUIData, 's1_rotz', -5, 5).listen().onChange(
+                    function (value) {
+                        bss_rotations[2].z = value;
+                    }
+                );
+                //#endregion
+
+                //#region Spine2
+                var folder18 = panel.addFolder('Spine2 (index -> 3)');
+                folder18.add(GUIData, 's2_rotx', -2, 2).listen().onChange(
+                    function (value) {
+                        bss_rotations[3].x = value;
+                    }
+                );
+                folder18.add(GUIData, 's2_roty', -2, 2).listen().onChange(
+                    function (value) {
+                        bss_rotations[3].y = value;
+                    }
+                );
+                folder18.add(GUIData, 's2_rotz', -5, 5).listen().onChange(
+                    function (value) {
+                        bss_rotations[3].z = value;
+                    }
+                );
+                //#endregion
+
+                var folder19 = panel.addFolder('Snapshots');
+
+                folder19.add(snapData, 'first');
+                folder19.add(snapData, 'second');
+                folder19.add(snapData, 'setToFirst');
+                folder19.add(snapData, 'interpolate');
+
+                //#endregion
+
+                var folder20 = panel.addFolder('Util');
+
+                folder20.add(snapData, 'download');
+
+
+            });
+
+            renderer = new THREE.WebGLRenderer({ antialias: true });
+            renderer.setPixelRatio(window.devicePixelRatio);
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.gammaOutput = true;
+            renderer.gammaFactor = 2.4;
+            renderer.shadowMap.enabled = true;
+            container.appendChild(renderer.domElement);
+
+            controls = new THREE.OrbitControls(camera, renderer.domElement);
+            controls.target.set(0, 100, 0);
+            controls.update();
+
+            window.addEventListener('resize', onWindowResize, false);
+
+            // stats
+            stats = new Stats();
+            container.appendChild(stats.dom);
+
+        } // end of init()
+
+
+        function onWindowResize() {
+
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+
+            renderer.setSize(window.innerWidth, window.innerHeight);
+
+        }
+
+        //
+
+        var anim_template = function () {
+            for (i in poseTo) {
+                poseTo[i].normalize();
+                bss_quaternions[i].slerp(poseTo[i], .1);
+            }
+
+        }
+
+        function rev_template() {
+            for (i in poseFrom) {
+                poseFrom[i].normalize();
+                bss_quaternions[i].slerp(poseFrom[i], .1);
+            }
+
+            console.log("yarak");
+        }
+
+        function animate() {
+            requestAnimationFrame(animate);
+
+            if (flag === true) {
+                anim_template();
+            }
+            else {
+                rev_template();
+            }
+
+
+            const t = clock.getElapsedTime();
+
+            var delta = clock.getDelta();
+
+            if (mixer) {
+                mixer.update(delta);
+            }
+
+
+
+            renderer.render(scene, camera);
+
+            stats.update();
+
+        }
+
+    </script>
+
+</body>
+
+</html>
