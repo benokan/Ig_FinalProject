@@ -17,6 +17,10 @@
 
         }
         
+        var loadPose = function (array) {
+            for (i in bss_quaternions) bss_quaternions[i].fromArray(array[i]);
+        }
+        
         
         // When we download the pose as .json it contains objects 
         // Via this function we're parsing it to arrays to benefit Quaternion class's proto function fromArray.
