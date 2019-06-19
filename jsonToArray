@@ -1,0 +1,25 @@
+        function chunkArray(array, size) {
+            let result = []
+            let arrayCopy = [...array]
+            while (arrayCopy.length > 0) {
+                result.push(arrayCopy.splice(0, size))
+            }
+            return result
+        }
+
+        var jsonToArray = function (jData) {
+            var element = [];
+            for (i in jData) {
+                element.push(jData[i]._x, jData[i]._y, jData[i]._z, jData[i]._w);
+            }
+            
+            return chunkArray(element,4);
+
+        }
+        
+        
+        // When we download the pose as .json it contains objects 
+        // Via this function we're parsing it to arrays to benefit Quaternion class's proto function fromArray.
+        
+        // usage : jsonToArray(yourPoseHere)
+        // output : length(yourPoseHere)*positions -> positions contain 4 elements in another array -> [_x, _y, _z, _w]
