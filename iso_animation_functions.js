@@ -1,25 +1,35 @@
 
-// function loadFile(fileName, jData) {
-//     var fileLoader = new THREE.FileLoader();
-//     fileLoader.load(
-//         // resource URL
-//         fileName,
-//         // onLoad callback
-//         function (data) {
-//             // output the text to the console
-//             jData = JSON.parse(data);
-            
-//         },
-//         // onProgress callback
-//         function (xhr) {
-//             console.log((xhr.loaded / xhr.total * 100) + '% loaded');
-//         },
-//         // onError callback
-//         function (err) {
-//             console.error('An error happened');
-//         }
-//     );
-// }
+function idleAnimation(flags, poses, k) {
+    var p1 = poses["idle01"];
+    var p2 = poses["idle02"];
+    var speed = 0.04;
+    if (k>0.25 && k<0.75) speed = speed*0.8;
+    else speed = 0.04;
+
+    if (flags["flag01"]){
+        bss[0].position.y += (0.95- 1.0)*speed;
+
+        loadPoseR(letr3D(p1, p2, k));
+        if (k >= 1.0) {
+            idleFlags["flag01"] = false;
+            idleFlags["flag02"] = true;
+            k = 0;
+            }
+    }
+    
+    else if (flags["flag02"]){
+        bss[0].position.y += (1.0- 0.95)*speed;
+
+        loadPoseR(letr3D(p2, p1, k));
+        if (k >= 1.0) {
+            idleFlags["flag01"] = true;
+            idleFlags["flag02"] = false;
+            k = 0;
+            }
+    }
+    k += speed;
+    return k;
+}
 
 
 function chunkArray(array, size) {
@@ -58,7 +68,36 @@ var loadPoseQ = function (array) {
 var loadPoseR = function (array) {
     for (i in bss_rotations) bss_rotations[i].fromArray(array[i]);
 }
+function parseJSONData (jsonData) {
+    var parsed = {};
+    var poses = Object.keys(jsonData);
+    for (k in poses) {
+        parsed[poses[k]] = jsonToArrayR(JSON.parse(jsonData[poses[k]]));
+    }
+    return parsed;
+}
 
+
+
+
+function letr3D(start, stop, increment) {
+    var pose = [];
+    for (i in start) {
+    var m = new THREE.Vector3();
+    var a = new THREE.Vector3();
+    var b = new THREE.Vector3();
+    a.fromArray(stop[i]);
+    b.fromArray(start[i]);
+    m.subVectors(a, b);
+    m.multiplyScalar(increment);
+    m.addVectors(m, b);
+    
+    var eu = new THREE.Euler();
+    eu.setFromVector3(m);
+    pose.push(eu);
+    }
+    return jsonToArrayR( pose );
+}
 
 // When we download the pose as .json it contains objects 
 // Via this function we're parsing it to arrays to benefit Quaternion class's proto function fromArray.
