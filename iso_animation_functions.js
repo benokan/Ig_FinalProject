@@ -75,123 +75,120 @@ return jsonToArrayR( pose );
 // output : length(yourPoseHere)*positions -> positions contain 4 elements in another array -> [_x, _y, _z, _w]
 
 
-function idleAnimation(flags, poses, k) {
-        var p1 = poses["idle01"];
-        var p2 = poses["idle02"];
-        var p3 = poses["idle03"];
-        var p4 = poses["idle03b"];
-        var speed = 0.04;
-        var cycler = performance.now()%20000;
-    
-        if (cycler<9000) {
-    
-            speed = 0.04;
-            if (k>0.25 && k<0.75) speed = speed*0.8;
-            else speed = 0.04;
-    
-            if (flags["flag01"]){
-                bss[0].position.y += (0.95- 1.0)*speed;
-                loadPoseR(letr3D(p1, p2, k));
-                k += speed;
-                if (k >= 1.0) {
-                    idleFlags["flag01"] = false;
-                    idleFlags["flag02"] = true;
-                    k = 0;
-                    }
+
+function idleAnimation (flags, poses, counter, k) {
+    var p1 = poses["idle01"];
+    var p2 = poses["idle02"];
+    var p3 = poses["idle03"];
+    var p4 = poses["idle03b"];
+    var speed = 0.04;
+
+    // console.log(k);
+    if (!counter) {
+        var currPose = JSON.stringify(bss_rotations);
+        currPose = jsonToArrayR(JSON.parse(currPose));
+        loadPoseR(letr3D(currPose, p1, k));
+        k += speed;
+        if (k >= 1.0) {
+
+            k = 0;
+            counter ++;
             }
+    }
+
+    else if (counter<5) {
             
-            else if (flags["flag02"]){
-                bss[0].position.y += (1.0- 0.95)*speed;
-                loadPoseR(letr3D(p2, p1, k));
-                k += speed;
-    
-                if (k >= 1.0) {
-                    idleFlags["flag01"] = true;
-                    idleFlags["flag02"] = false;
-                    k = 0;
-                    }
+        speed = 0.04;
+        if (k>0.25 && k<0.75) speed = speed*0.8;
+        else speed = 0.04;
+
+        if (flags["flag01"]){
+            loadPoseR(letr3D(p1, p2, k));
+            k += speed;
+            if (k >= 1.0) {
+                idleFlags["flag01"] = false;
+                idleFlags["flag02"] = true;
+                k = 0;
                 }
         }
-        else if (cycler === 9000) {
-            k =0 ;
-            idleFlags["flag01"] = false;
-            idleFlags["flag02"] = false;
-            idleFlags["flag03"] = true;
-            idleFlags["flag04"] = false;
-        }
-    
-        if (cycler>9000 && cycler< 11000) {
-            var currPose = JSON.stringify(bss_rotations);
-            currPose = jsonToArrayR(JSON.parse(currPose));
-            loadPoseR(letr3D(currPose, p1, 0.1));
-            flags["flag03"] = true;
-    
-        }
-        if (cycler>11500 && cycler< 12000) {
-            var currPose = JSON.stringify(bss_rotations);
-            currPose = jsonToArrayR(JSON.parse(currPose));
-            loadPoseR(letr3D(currPose, p3, 0.1));
-            flags["flag03"] = true;
-    
-        }
-    
-        if (cycler>12000 && cycler<19000) {
-            // bss[0].position.y += (0.95- 1.0)*speed;
-            speed = 0.04;
-            if (k>0.25 && k<0.75) speed = speed*0.8;
-            else speed = 0.04;
-    
-            if (flags["flag03"]){
-                // bss[0].position.y += (0.95- 1.0)*speed;
-                loadPoseR(letr3D(p3, p4, k));
-                k += speed;
-                if (k >= 1.0) {
-                    idleFlags["flag03"] = false;
-                    idleFlags["flag04"] = true;
-                    k = 0;
-                    }
-            }
-            
-            else if (flags["flag04"]){
-                // bss[0].position.y += (1.0- 0.95)*speed;
-                loadPoseR(letr3D(p4, p3, k));
-                k += speed;
-    
-                if (k >= 1.0) {
-                    idleFlags["flag03"] = true;
-                    idleFlags["flag04"] = false;
-                    k = 0;
-                    }
-                }
-        }
-    
-        if (cycler >19000) {
-            var currPose = JSON.stringify(bss_rotations);
-            currPose = jsonToArrayR(JSON.parse(currPose));
-            loadPoseR(letr3D(currPose, p1, 0.1));
-            flags["flag03"] = true;
-            k =0 ;
-            idleFlags["flag01"] = true;
-            idleFlags["flag02"] = false;
-            idleFlags["flag03"] = false;
-            idleFlags["flag04"] = false;
-    
-        }
-    
-    
         
-    
-        return k;
+        else if (flags["flag02"]){
+            loadPoseR(letr3D(p2, p1, k));
+            k += speed;
+            if (k >= 1.0) {
+                idleFlags["flag01"] = true;
+                idleFlags["flag02"] = false;
+                k = 0;
+                counter++;
+                }
+            }
+    }
+    else if (counter == 5) {
+        k =0 ;
+        idleFlags["flag01"] = false;
+        idleFlags["flag02"] = false;
+        idleFlags["flag03"] = true;
+        idleFlags["flag04"] = false;
+        counter ++;
+        return [k, counter];
+    }
+
+    else if (counter > 5 && counter <10) {
+
+        if (idleFlags["flag03"]){
+            var currPose = JSON.stringify(bss_rotations);
+            currPose = jsonToArrayR(JSON.parse(currPose));
+            loadPoseR(letr3D(currPose, p3, k));
+            k += speed;
+            if (k >= 1.0) {
+                idleFlags["flag03"] = false;
+                idleFlags["flag04"] = true;
+                k = 0;
+                counter ++;
+                }
+        }
+        
+        if (flags["flag04"]){
+            // speed = speed * 0.5;
+            loadPoseR(letr3D(p3, p4, k));
+            k += speed;
+            if (k >= 1.0) {
+                idleFlags["flag04"] = false;
+                idleFlags["flag05"] = true;
+                k = 0;
+                }
+        }
+        
+        else if (flags["flag05"]){
+            // speed = speed * 0.5;
+
+            loadPoseR(letr3D(p4, p3, k));
+            k += speed;
+
+            if (k >= 1.0) {
+                idleFlags["flag04"] = true;
+                idleFlags["flag05"] = false;
+                k = 0;
+                counter ++;
+                }
+        }    
+    }
+    if (counter==10) {
+        counter = 0;
+        idleFlags["flag01"] = true;
+        idleFlags["flag04"] = false;
+        idleFlags["flag05"] = false;
+
+    }
+    return [k, counter];
 }
 
-
-function jumpAnimation(flags, poses, k) {
+function jumpAnimation(start, flags, poses, k) {
     var p1 = poses["jump01"];
     var p2 = poses["jump02"];
     var p3 = poses["jump03"];
     var p4 = poses["jump04"];
     var speed = 0.06;
-    // var cycler = performance.now()%1000;
     
     if (flags["flag00"]) {
         var currPose = JSON.stringify(bss_rotations);
@@ -252,12 +249,13 @@ function jumpAnimation(flags, poses, k) {
         if (k >= 1.0) {
             flags["flag04"] = false;
             flags["flag00"] = true;
+            start = false;
             k = 0;
             }
     }
 
 
-    return k;
+    return [k, start];
 }
 
 function fallAnimation (flags, poses, k) {

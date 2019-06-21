@@ -13,8 +13,10 @@
 
     <script src="js/libs/inflate.min.js"></script>
     <script src="js/loaders/GLTFLoader.js"></script>
+    <script src="js/loaders/OBJLoader.js"></script>
 
-    <script src="js/controls/OrbitControls.js"></script>
+
+    <!-- <script src="js/controls/OrbitControls.js"></script> -->
 
     <script src="js/WebGL.js"></script>
     <script src="js/libs/stats.min.js"></script>
@@ -51,6 +53,10 @@
         // Calculate the difference of quaternions of each pose using these arrays.
         var poseFrom = [];
         var poseTo = [];
+        var frame = new Array();
+        var k = 1;
+        var cameraPos = new THREE.Vector3(0, 200, -500);
+        var distToilet = 10000; // distance to the toilet
 
         var t_loader = new THREE.TextureLoader();
 
@@ -66,12 +72,12 @@
         var fName;
         var text; 
 
-        var k = 0;
         var j1, j2;
         var loading = true;
 
+        var idleCounter = 0;
         var inc = 0.0;
-        var idleFlags = {"flag01": true, "flag02": false, "flag03": false, "flag04": false};
+        var idleFlags = {"flag01": true, "flag02": false, "flag03": false, "flag04": false, "flag05": false};
         var jumpFlags = {"flag00": true, "flag01": false, "flag02": false, "flag03": false, "flag04": false};
         var fallFlags = {"flag00": true, "flag01": false};
         var dabFlags = {"flag01": true, "flag02": false};
@@ -83,10 +89,6 @@
         var slipStart = false;
         var fallStart = false;
         var dabStart = false;
-
-
-
-
 
         init();
         animate();
@@ -154,7 +156,7 @@
         }
 
         function resetFlags () {
-            idleFlags = {"flag01": true, "flag02": false, "flag03": false, "flag04": false};
+            idleFlags = {"flag01": true, "flag02": false, "flag03": false, "flag04": false, "flag05": false};
             jumpFlags = {"flag00": true, "flag01": false, "flag02": false, "flag03": false, "flag04": false};
             fallFlags = {"flag00": true, "flag01": false};
             dabFlags = {"flag01": true, "flag02": false};
@@ -166,6 +168,8 @@
             slipStart = false;
             fallStart = false;
             dabStart = false;
+            inc = 0;
+            idleCounter = 0;
         }
         function init() {
             container = document.createElement('div');
@@ -179,20 +183,24 @@
             });
 
             
-
-            camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 1, 2000);
-            camera.position.set(100, 200, 300);
-
             scene = new THREE.Scene();
             scene.background = new THREE.Color(0xa0a0a0);
-            scene.fog = new THREE.Fog(0xa0a0a0, 200, 1000);
+            // scene.fog = new THREE.Fog(0xa0a0a0, 200, 1000);
+
+            cameraModel = new THREE.Scene(); // to move camera and player sync, parent node of them
+            scene.add(cameraModel);
+
+            camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 1, 10000);
+            camera.position.set(cameraPos.x, cameraPos.y, cameraPos.z);
+            camera.rotation.y = Math.PI;
+            cameraModel.add(camera);
 
             light = new THREE.HemisphereLight(0xffffff, 0x444444);
-            light.position.set(0, 200, 0);
+            light.position.set(100, 200, 0);
             scene.add(light);
 
             light = new THREE.DirectionalLight(0xffffff);
-            light.position.set(0, 200, 100);
+            light.position.set(0, 2000, 100);
             light.castShadow = true;
             light.shadow.camera.top = 180;
             light.shadow.camera.bottom = - 100;
@@ -201,20 +209,46 @@
             scene.add(light);
 
             // ground
-            floor = new THREE.Mesh(
-                new THREE.PlaneGeometry(100, 100000, 8, 8),
-                new THREE.MeshLambertMaterial({
-                    map: grassTexture
-                }));
-            floor.rotation.x -= Math.PI / 2;
-            floor.position.y -= 1
-            scene.add(floor);
+            for (let index = -1; index <= 1; index += 2) {
 
-            var grid = new THREE.GridHelper(2000, 20, 0x000000, 0x000000);
-            grid.material.opacity = 0.2;
-            grid.material.transparent = true;
-            scene.add(grid);
+                floor = new THREE.Mesh(
+                    new THREE.PlaneGeometry(50, distToilet *2, 8, 8),
+                    new THREE.MeshLambertMaterial({
+                        map: grassTexture
+                    }));
+                floor.rotation.x -= Math.PI / 2;
+                floor.position.x += index * 30;
+                floor.position.y -= 1;
+                scene.add(floor);
+            }
 
+
+            // var grid = new THREE.GridHelper(2000, 20, 0x000000, 0x000000);
+            // grid.material.opacity = 0.2;
+            // grid.material.transparent = true;
+            // scene.add(grid);
+            var obj_loader = new THREE.OBJLoader();     
+            var toilet;       
+
+            // load a resource
+            obj_loader.load(
+                // resource URL
+                'models/obj/toilet/10778_Toilet_V2.obj',
+                // called when resource is loaded
+                function (object) {
+                    object.rotation.x = -1.6;
+                    object.scale.x = 2;
+                    object.scale.y = 2;
+                    object.scale.z = 2;
+                    object.position.y = 40;
+                    object.position.x = -10;
+                    object.position.z = distToilet;
+                    object.rotateOnAxis(new THREE.Vector3(0, 0, 1), Math.PI);
+
+                    scene.add(object);
+                    toilet = object;
+                }
+            );
             // model
             var loader = new THREE.GLTFLoader();
 
@@ -263,8 +297,8 @@
 
                 //console.log(model);
                 bss[0].position.y = 1.0;
-
-                scene.add(model);
+                cameraModel.add(model);
+                // scene.add(model);
 
                 
 
@@ -329,90 +363,48 @@
                     this.fileName = 'message';
 
                     this.idle = function () {
-                        // inc = idleAnimation(idleFlags, parsedPoses, inc);
-                        // runStart = false;
-                        // jumpStart = false;
-                        // slipStart = false;
-                        // fallStart = false;
-                        // dabStart = false;
                         resetFlags();
                         idleStart = true;
-                        k = 0;
                     }
 
                     
                     this.run = function () {
-                        // inc = runAnimation(runFlags, parsedPoses, inc);
-                        // idleStart = false;
-                        // jumpStart = false;
-                        // slipStart = false;
-                        // fallStart = false;
-                        // dabStart = false;
                         resetFlags();
                         runStart = true;
-
-                        k = 0;
 
                     }
 
                     
                     this.jump = function () {
-                        // inc = jumpAnimation(jumpFlags, parsedPoses, inc);
-                        // idleStart = false;
-                        // runStart = false;
-                        // slipStart = false;
-                        // fallStart = false;
-                        // dabStart = false;
                         resetFlags();
                         jumpStart = true;
-
-                        k = 0;
 
                     }
 
                     
                     this.slip = function () {
-                        // inc = slipAnimation(slipFlags, parsedPoses, inc);
-                        // idleStart = false;
-                        // runStart = false;
-                        // jumpStart = false;
-                        // fallStart = false;
-                        // dabStart = false;
                         resetFlags();
                         slipStart = true;
-
-                        k = 0;
 
                     }
 
                     
                     this.fall = function () {
-                        // inc = fallAnimation(fallFlags, parsedPoses, inc);
-                        // idleStart = false;
-                        // runStart = false;
-                        // jumpStart = false;
-                        // slipStart = false;
-                        // dabStart = false;
                         resetFlags();
                         fallStart = true;
-
-                        k = 0;
 
                     }
 
                     
                     this.dab = function () {
-                        // inc = dabAnimation(dabFlags, parsedPoses, inc);
-                        // idleStart = false;
-                        // runStart = false;
-                        // jumpStart = false;
-                        // slipStart = false;
-                        // fallStart = false;
                         resetFlags();
                         dabStart = true;
 
-                        k = 0;
+                    }
 
+                    this.stop = function () {
+                        resetFlags();
+                      
                     }
                 }
 
@@ -524,8 +516,6 @@
                 //#region GUI Variables
                 var GUIData = new feed();
                 var snapData = new snapShotFeed();
-                // var snapDataOrcun = new snapShotFeedOrcun();
-
                 var panel = new dat.GUI();
                 //#endregion
 
@@ -893,7 +883,6 @@
                 // folder19.add(snapData, 'setToFirst');
                 // folder19.add(snapData, 'interpolate');
 
-                // //#endregion
                 var folder22 = panel.addFolder("Animations");
                 folder22.add(snapData, 'idle');
                 folder22.add(snapData, 'run');
@@ -901,17 +890,20 @@
                 folder22.add(snapData, 'slip');
                 folder22.add(snapData, 'fall');
                 folder22.add(snapData, 'dab');
-
+                folder22.add(snapData, 'stop');
+                
+                
                 var folder21 = panel.addFolder('Util');
                 folder21.add(snapData, 'fileName').onChange(setValue);
                 folder21.add(snapData, 'addFrame');
                 folder21.add(snapData, 'download');
-
-
+                
+                
                 function setValue() {
                     fName = snapData.fileName;
                 }
-
+                
+                //#endregion
                 
 
             });
@@ -925,9 +917,9 @@
             renderer.shadowMap.enabled = true;
             container.appendChild(renderer.domElement);
 
-            controls = new THREE.OrbitControls(camera, renderer.domElement);
-            controls.target.set(0, 100, 0);
-            controls.update();
+            // controls = new THREE.OrbitControls(camera, renderer.domElement);
+            // controls.target.set(0, 100, 0);
+            // controls.update();
 
             window.addEventListener('resize', onWindowResize, false);
 
@@ -948,31 +940,6 @@
         }
 
 
-
-        function dapPose() {
-            var dapPoseJSON = JSON.parse("[{\"_x\":0,\"_y\":0,\"_z\":0,\"_w\":1},{\"_x\":-0.0620415471494198,\"_y\":-0.00020922017574776,\"_z\":0.00336574343964458,\"_w\":0.998067855834961},{\"_x\":0.0417642258107662,\"_y\":-0.00017663613834884,\"_z\":-0.00422563636675477,\"_w\":0.999118566513062},{\"_x\":3.46944695195361e-18,\"_y\":1.0842021724855e-19,\"_z\":1.38913403349705e-19,\"_w\":1},{\"_x\":0.536777496337891,\"_y\":0.587068498134613,\"_z\":-0.465008050203323,\"_w\":0.388571798801422},{\"_x\":-0.3676930317332938,\"_y\":-0.03343079717635299,\"_z\":0.09186669106510385,\"_w\":0.9247944243385561},{\"_x\":0.00000363971366823534,\"_y\":9.16978422083048e-8,\"_z\":0.0251857042312622,\"_w\":0.999682784080505},{\"_x\":-0.534619510173798,\"_y\":0.588767230510712,\"_z\":-0.478361785411835,\"_w\":-0.372431427240372},{\"_x\":0.039518998220786986,\"_y\":0.18249009717313336,\"_z\":-0.5169002200061722,\"_w\":0.8354338847395028},{\"_x\":-0.3292496452841133,\"_y\":-0.0379895797256643,\"_z\":-0.8233377395425815,\"_w\":0.46072381049546945},{\"_x\":0.28134371987011336,\"_y\":-0.4777283746271376,\"_z\":-0.16476018131432332,\"_w\":0.8157667522147687},{\"_x\":0.2980690303696085,\"_y\":0.09525838657265642,\"_z\":-0.9492221983590873,\"_w\":0.03252554479846996},{\"_x\":-0.27025227631088067,\"_y\":-0.059559251623412184,\"_z\":0.025238371763344765,\"_w\":0.9606140886357964},{\"_x\":0.473105132579803,\"_y\":0.0735795348882675,\"_z\":-0.0396917350590229,\"_w\":0.877030313014984},{\"_x\":0.32674303650856,\"_y\":-0.00278482306748629,\"_z\":0.000962769263423979,\"_w\":0.945108652114868},{\"_x\":0.11174076637455041,\"_y\":-0.006107515453792742,\"_z\":-0.9886684283714438,\"_w\":-0.10005717428825014},{\"_x\":-0.04092261125514233,\"_y\":0.00009610670124380347,\"_z\":-0.007544642976299874,\"_w\":0.9991338293811909},{\"_x\":0.441416680812836,\"_y\":-0.0722500830888748,\"_z\":0.0356867276132107,\"_w\":0.893676519393921},{\"_x\":0.356838226318359,\"_y\":0.0296092480421066,\"_z\":-0.0113168293610215,\"_w\":0.933628261089325}]");
-            for (var i=0; i<19; i++){
-                bss_quaternions[i]._w = dapPoseJSON[i]._w;
-                bss_quaternions[i]._y = dapPoseJSON[i]._y;
-                bss_quaternions[i]._z = dapPoseJSON[i]._z;
-                bss_quaternions[i]._x = dapPoseJSON[i]._x;
-
-            }
-        }
-
-        function fromJSONtoQuaternion(jsonText) {
-            var jsonPose = JSON.parse(jsonText);
-            var temp = [...bss_quaternions];
-            for (var i=0; i<19; i++) {
-                temp[i]._x = jsonPose[i]._x;
-                temp[i]._y = jsonPose[i]._y;
-                temp[i]._z = jsonPose[i]._z;
-                temp[i]._w = jsonPose[i]._w;
-
-            }
-            return temp;
-        }
-
         var anim_template = function () {
             for (i in poseTo) {
                 poseTo[i].normalize();
@@ -989,22 +956,251 @@
 
         }
 
+        var poo = new Array(); // poo
+        var distanceToAdd = 1000; // constant - determines the min distance to put obstacles.
+
+
+        function addSlipSign(direction, distance=0){ // returns 1
+
+            // Slippery when wet Model...
+            var loader = new THREE.GLTFLoader();
+
+            loader.load('models/gltf/SWW/sww.gltf', function (gltf) {
+                const model = gltf.scene;
+                
+                model.position.x = direction * -30;
+                model.rotation.y = 90 * Math.PI/180;
+                distanceToAdd += distance;
+                model.position.z = cameraModel.position.z - 70 + distanceToAdd;
+                
+
+                if (poo){ // check if its empty or not
+                    for (let index = 0; index < poo.length; index++) {
+                        if((poo[index][1] == (direction * -30) || poo[index][2] == 3) && poo[index][0] == model.position.z - 230){
+                            console.log("Not Empty");
+                            return;
+                        }                    
+                    }
+                }
+
+                poo.push([model.position.z - 230, model.position.x, 1]);
+                scene.add(model);
+                console.log(poo);              
+                 
+                }
+            )
+        }
+        
+        function addIce(direction, distance=0){ // returns 2
+            var obj_loader = new THREE.OBJLoader();
+            obj_loader.load(                
+                'models/obj/Rock/Rock.obj',
+
+                function (object) {
+                    object.scale.x = object.scale.y = object.scale.z = 25;
+                    object.scale.y = 1;
+                    object.position.y = .2;
+                    direction > 0 ? object.position.x = -60: object.position = 0;
+                    
+                    object.position.z = cameraModel.position.z + distanceToAdd + distance;
+
+                    if (poo){ // check if its empty or not
+                        for (let index = 0; index < poo.length; index++) {
+                            if((poo[index][1] == (direction * -30) || poo[index][2] == 3) && poo[index][0] == object.position.z - 300){ // check for ice and sign
+                                console.log("Not Empty");
+                                return;
+                            }
+                        }
+                    }
+
+                    scene.add(object);
+                    poo.push([object.position.z - 300, object.position.x + 30, 2]);
+                    console.log(poo);
+                }
+            )
+        }
+        
+        function addBox(distance = 0){ // returns 3
+            // Box Model...
+            var box_loader = new THREE.GLTFLoader();
+
+            box_loader.load('models/gltf/Box2/box2.gltf', function (gltf) {
+                const model = gltf.scene;
+
+                model.scale.x = 45;
+                model.scale.y = 45;
+                model.scale.z = 45;
+                model.rotateOnAxis(new THREE.Vector3(0, 1, 0), Math.PI / 2);
+                model.position.x = 0;
+                model.position.y = 23;
+                model.position.z = cameraModel.position.z - 50 + distanceToAdd + distance;
+
+                if (poo){ // check if its empty or not
+                    for (let index = 0; index < poo.length; index++) {
+                        if(poo[index][0] == model.position.z - 250){
+                            console.log("Not Empty");
+                            return;
+                        }                    
+                    }
+                }
+
+                scene.add(model);                
+                poo.push([model.position.z - 250 , model.position.x, 3]);
+                console.log(poo);
+                }
+            )
+        }
+        var changeLane = false;
+        var jump = false;
+        var walk = false;
+        var endGame = false;
+        var inpol = 1;
+        var callOnce = true;
+        function translationEnv(speed) {
+
+            if(endGame) return;
+
+            if(callOnce){
+                callOnce = false;
+                // console.log("dasuhgkjashdf");
+                cameraPos.x = 30;
+
+                cameraPos.y = 0;
+                cameraPos.z = 550;
+                camera.rotation.x = 0.1;                
+            }
+
+            for (let index = 0; index < poo.length; index++) {
+
+                if(poo[index] && poo[index][0] -cameraPos.z > 0){
+                    
+                    if (poo[1]){
+                        // console.log("heyy", poo[0][2], poo[1][2]);
+                        if(poo[0][2] == 2 && poo[1][2] == 3) {
+                            
+                            if(Math.abs(poo[1][2] - Math.abs(poo[0][2])) <= 1) {
+                                if(poo[0][0] - cameraPos.z < 10 && cameraPos.x == poo[0][1]){
+                                    console.log("endgame");    
+                                    walk = false;
+                                    endGame = true;
+                                }
+                            }
+                            
+                        }
+
+                        for (let index = 0; index < poo.length; index++) {
+                            if(poo[index][1] == cameraPos.x && poo[index][2] == 1){
+                                // console.log("change lane!")
+                                changeLane = true;
+                            }                                                                    
+                        }
+                            
+                    }
+                        console.log(poo[0][2]);
+                        for (let index = 0; index < poo.length; index++) {
+                            if(poo[index][1] == cameraPos.x && poo[index][2] == 1){
+                                // console.log("change lane!")
+                                changeLane = true;
+                            }                                                                    
+                        }
+
+                        switch(poo[0][2]){
+                            case 1: // slippery sign - change lane (-30, 30)
+                                
+                                
+                                
+
+                                break;
+                            case 2: // ice - jump
+
+                                if(poo[0][1] == cameraPos.x){
+                                    // console.log("'ice' jump!")
+                                    jump = true;
+                                    resetFlags();
+                                    jumpStart = true;
+                                }
+                                
+                                break;
+                            case 3: // box - jump
+
+                                // if(poo[0][1] == cameraPos.x){
+                                    // console.log("'box' jump!")
+                                    jump = true;
+                                    resetFlags();
+
+                                    jumpStart = true;
+                                    console.log("Jump!");
+
+                                // }
+
+                                break;
+                        }
+                                       
+                }
+
+                poo[index][0] -cameraPos.z < 0 ? poo.shift(): 0 ;
+            }
+
+            
+
+            // --> Walk;
+            if(cameraPos.z < distToilet -300 && walk){
+                
+                // run
+                cameraPos.z += speed/5                
+
+                // --> Change lane;
+                // Right Lane = -30
+                // Left Lane =  30
+                if (cameraPos.x == 30 && changeLane) { // go right
+                    changeLane = false;
+                    inpol = (2 * -30) / speed;
+                } else if (cameraPos.x == -30 && changeLane) { // go left
+                    changeLane = false;
+                    inpol = (2 * 30) / speed;
+                }else if (cameraPos.x == -30 || cameraPos.x == 30){ // don't change
+                    inpol = 0;                
+                }
+                cameraPos.x += inpol;
+                // --> End of "Change lane".
+
+            }else if (cameraPos.z == distToilet -300){
+                console.log("Congratz");
+            }else{
+                console.log("didnt start yet");
+            }
+            // --> End of "Walk".
+            
+            cameraModel.position.set(cameraPos.x, cameraPos.y, cameraPos.z);            
+            
+        }
+
+        var speed = 40;
+
+
         function animate() {
             
             requestAnimationFrame(animate);
             if (loading) loadJSON();
-            
-            // if (flag === true) {
 
-                if (idleStart) inc = idleAnimation(idleFlags, parsedPoses, inc);
-                else if (runStart) inc = runAnimation(runFlags, parsedPoses, inc);
-                else if (jumpStart) inc = jumpAnimation(jumpFlags, parsedPoses, inc);
-                else if (slipStart) inc = slipAnimation(slipFlags, parsedPoses, inc);
-                else if (fallStart) inc = fallAnimation(fallFlags, parsedPoses, inc);
-                else if (dabStart) inc = dabAnimation(dabFlags, parsedPoses, inc);
+            if (bss[0])
+                translationEnv(speed);
 
+            if (idleStart) {
+                var anim = idleAnimation(idleFlags, parsedPoses, idleCounter, inc);
+                inc = anim[0];
+                idleCounter = anim[1];
+            }
+            else if (runStart) inc = runAnimation(runFlags, parsedPoses, inc);
+            else if (jumpStart) {
+                var anim  = jumpAnimation(jumpStart, jumpFlags, parsedPoses, inc);
+                inc = anim[0];
+                jumpStart = anim[1];
+            }
+            else if (slipStart) inc = slipAnimation(slipFlags, parsedPoses, inc);
+            else if (fallStart) inc = fallAnimation(fallFlags, parsedPoses, inc);
+            else if (dabStart) inc = dabAnimation(dabFlags, parsedPoses, inc);
 
-                // }
 
 
             const t = clock.getElapsedTime();
