@@ -71,10 +71,22 @@
         var loading = true;
 
         var inc = 0.0;
-        var idleFlags = {"flag01": true, "flag02": false};
+        var idleFlags = {"flag01": true, "flag02": false, "flag03": false, "flag04": false};
+        var jumpFlags = {"flag00": true, "flag01": false, "flag02": false, "flag03": false, "flag04": false};
+        var fallFlags = {"flag00": true, "flag01": false};
+        var dabFlags = {"flag01": true, "flag02": false};
+        var runFlags = {"flag00": true, "flag01": false, "flag02": false };
+        var slipFlags = {"flag00":true, "flag01": false, "flag02": false, "flag03": false};
+        var idleStart = false;
+        var runStart = false;
+        var jumpStart = false;
+        var slipStart = false;
+        var fallStart = false;
+        var dabStart = false;
 
 
-        
+
+
 
         init();
         animate();
@@ -118,25 +130,6 @@
         }
 
 
-        // function letr3D(start, stop, increment) {
-        //     var pose = [];
-        //     for (i in start) {
-        //     var m = new THREE.Vector3();
-        //     var a = new THREE.Vector3();
-        //     var b = new THREE.Vector3();
-        //     a.fromArray(stop[i]);
-        //     b.fromArray(start[i]);
-        //     m.subVectors(a, b);
-        //     m.multiplyScalar(increment);
-        //     m.addVectors(m, b);
-            
-        //     var eu = new THREE.Euler();
-        //     eu.setFromVector3(m);
-        //     pose.push(eu);
-        //     }
-        //     return pose;
-        // }
-
         function loadFile(fileName, jData) {
             var fileLoader = new THREE.FileLoader();
             fileLoader.load(
@@ -160,6 +153,20 @@
             );
         }
 
+        function resetFlags () {
+            idleFlags = {"flag01": true, "flag02": false, "flag03": false, "flag04": false};
+            jumpFlags = {"flag00": true, "flag01": false, "flag02": false, "flag03": false, "flag04": false};
+            fallFlags = {"flag00": true, "flag01": false};
+            dabFlags = {"flag01": true, "flag02": false};
+            runFlags = {"flag00": true, "flag01": false, "flag02": false };
+            slipFlags = {"flag00":true, "flag01": false, "flag02": false, "flag03": false};
+            idleStart = false;
+            runStart = false;
+            jumpStart = false;
+            slipStart = false;
+            fallStart = false;
+            dabStart = false;
+        }
         function init() {
             container = document.createElement('div');
             document.body.appendChild(container);
@@ -296,6 +303,7 @@
 
                     this.interpolate = function () {
                         flag = !flag;
+                        if (!flag) fallFlags["flag00"] = true;
                         console.log(flag);
                     }
 
@@ -320,41 +328,91 @@
 
                     this.fileName = 'message';
 
-                }
+                    this.idle = function () {
+                        // inc = idleAnimation(idleFlags, parsedPoses, inc);
+                        // runStart = false;
+                        // jumpStart = false;
+                        // slipStart = false;
+                        // fallStart = false;
+                        // dabStart = false;
+                        resetFlags();
+                        idleStart = true;
+                        k = 0;
+                    }
 
-                var snapShotFeedOrcun = function () { 
+                    
+                    this.run = function () {
+                        // inc = runAnimation(runFlags, parsedPoses, inc);
+                        // idleStart = false;
+                        // jumpStart = false;
+                        // slipStart = false;
+                        // fallStart = false;
+                        // dabStart = false;
+                        resetFlags();
+                        runStart = true;
 
-                    // define 
-                    var poseFrom = [];
-                    var poseTo = [];
-                    var frame = new Array();
-                    var k = 1;
-                    // Snapshots
-                    this.Set = function () { // to get the positions.
-
-                        for (i in bss_quaternions) {
-                            poseFrom[i] = bss_quaternions[i].clone();
-                        }
-                        console.log("Parameters saved");
+                        k = 0;
 
                     }
-                    this.Next = function () { // to save the frame
-                        frame.push([...poseFrom]);
-                        console.log("Frame %d saved", frame.length);
+
+                    
+                    this.jump = function () {
+                        // inc = jumpAnimation(jumpFlags, parsedPoses, inc);
+                        // idleStart = false;
+                        // runStart = false;
+                        // slipStart = false;
+                        // fallStart = false;
+                        // dabStart = false;
+                        resetFlags();
+                        jumpStart = true;
+
+                        k = 0;
+
                     }
-                    this.PreviewSavedFrames = function () { // to preview all frames one by one                          
-                        k = k%frame.length;
-                        for (i in bss_quaternions) {
-                            bss_quaternions[i].copy(frame[k][i]);
-                        }                                    
-                        k += 1;
-                        console.log("Current Frame = %d", k);
+
+                    
+                    this.slip = function () {
+                        // inc = slipAnimation(slipFlags, parsedPoses, inc);
+                        // idleStart = false;
+                        // runStart = false;
+                        // jumpStart = false;
+                        // fallStart = false;
+                        // dabStart = false;
+                        resetFlags();
+                        slipStart = true;
+
+                        k = 0;
+
                     }
-                    this.setToFirst = function () { // first pos                
-                        for (i in bss_quaternions) {
-                            bss_quaternions[i].copy(frame[0][i]);
-                            console.log( bss_quaternions[i] == frame[0][i]);
-                        }
+
+                    
+                    this.fall = function () {
+                        // inc = fallAnimation(fallFlags, parsedPoses, inc);
+                        // idleStart = false;
+                        // runStart = false;
+                        // jumpStart = false;
+                        // slipStart = false;
+                        // dabStart = false;
+                        resetFlags();
+                        fallStart = true;
+
+                        k = 0;
+
+                    }
+
+                    
+                    this.dab = function () {
+                        // inc = dabAnimation(dabFlags, parsedPoses, inc);
+                        // idleStart = false;
+                        // runStart = false;
+                        // jumpStart = false;
+                        // slipStart = false;
+                        // fallStart = false;
+                        resetFlags();
+                        dabStart = true;
+
+                        k = 0;
+
                     }
                 }
 
@@ -466,7 +524,7 @@
                 //#region GUI Variables
                 var GUIData = new feed();
                 var snapData = new snapShotFeed();
-                var snapDataOrcun = new snapShotFeedOrcun();
+                // var snapDataOrcun = new snapShotFeedOrcun();
 
                 var panel = new dat.GUI();
                 //#endregion
@@ -828,20 +886,21 @@
                 );
                 //#endregion
 
-                var folder19 = panel.addFolder('Snapshots');
+                // var folder19 = panel.addFolder('Snapshots');
 
-                folder19.add(snapData, 'first');
-                folder19.add(snapData, 'second');
-                folder19.add(snapData, 'setToFirst');
-                folder19.add(snapData, 'interpolate');
+                // folder19.add(snapData, 'first');
+                // folder19.add(snapData, 'second');
+                // folder19.add(snapData, 'setToFirst');
+                // folder19.add(snapData, 'interpolate');
 
-                var folder20 = panel.addFolder('SnapshotsOrcun');
-
-                folder20.add(snapDataOrcun, 'Set');
-                folder20.add(snapDataOrcun, 'Next');
-                folder20.add(snapDataOrcun, 'setToFirst');
-                folder20.add(snapDataOrcun, 'PreviewSavedFrames');
-                //#endregion
+                // //#endregion
+                var folder22 = panel.addFolder("Animations");
+                folder22.add(snapData, 'idle');
+                folder22.add(snapData, 'run');
+                folder22.add(snapData, 'jump');
+                folder22.add(snapData, 'slip');
+                folder22.add(snapData, 'fall');
+                folder22.add(snapData, 'dab');
 
                 var folder21 = panel.addFolder('Util');
                 folder21.add(snapData, 'fileName').onChange(setValue);
@@ -852,6 +911,8 @@
                 function setValue() {
                     fName = snapData.fileName;
                 }
+
+                
 
             });
 
@@ -929,28 +990,22 @@
         }
 
         function animate() {
+            
             requestAnimationFrame(animate);
             if (loading) loadJSON();
+            
+            // if (flag === true) {
+
+                if (idleStart) inc = idleAnimation(idleFlags, parsedPoses, inc);
+                else if (runStart) inc = runAnimation(runFlags, parsedPoses, inc);
+                else if (jumpStart) inc = jumpAnimation(jumpFlags, parsedPoses, inc);
+                else if (slipStart) inc = slipAnimation(slipFlags, parsedPoses, inc);
+                else if (fallStart) inc = fallAnimation(fallFlags, parsedPoses, inc);
+                else if (dabStart) inc = dabAnimation(dabFlags, parsedPoses, inc);
 
 
-            if (flag === true) {
-                // anim_template();
-                // console.log(p);
-                // p = letr3D(jsonToArrayR(j1), jsonToArrayR(j2), k);
-                // k += 0.05;
-                // loadPoseR(jsonToArrayR(p));
-                // // console.log(k);
-                // if(k>=1){
-                //     k=0;
-                //     flag = false;
                 // }
-                inc = idleAnimation(idleFlags, parsedPoses, inc);
 
-                }
-            else {
-                // rev_template();
-            }
-            // snapShotFeed();
 
             const t = clock.getElapsedTime();
 
@@ -959,8 +1014,6 @@
             if (mixer) {
                 mixer.update(delta);
             }
-
-
 
             renderer.render(scene, camera);
 
