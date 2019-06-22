@@ -83,7 +83,7 @@
         var dabFlags = {"flag01": true, "flag02": false};
         var runFlags = {"flag00": true, "flag01": false, "flag02": false };
         var slipFlags = {"flag00":true, "flag01": false, "flag02": false, "flag03": false};
-        var idleStart = false;
+        var idleStart = true;
         var runStart = false;
         var jumpStart = false;
         var slipStart = false;
@@ -162,7 +162,7 @@
             dabFlags = {"flag01": true, "flag02": false};
             runFlags = {"flag00": true, "flag01": false, "flag02": false };
             slipFlags = {"flag00":true, "flag01": false, "flag02": false, "flag03": false};
-            idleStart = false;
+            idleStart = true;
             runStart = false;
             jumpStart = false;
             slipStart = false;
@@ -405,6 +405,11 @@
                     this.stop = function () {
                         resetFlags();
                       
+                    }
+
+                    this.ToggleAnimation = function () {
+                        walk = !walk;
+                        resetFlags();
                     }
                 }
 
@@ -892,6 +897,12 @@
                 folder22.add(snapData, 'dab');
                 folder22.add(snapData, 'stop');
                 
+
+                panel.add(snapData, "ToggleAnimation");
+                // var folder23 = panel.addFolder("Toggle Animation");
+                // folder23.add(snapData, 'StartRunning');
+                // folder23.add(snapData, 'StopRunning');
+
                 
                 var folder21 = panel.addFolder('Util');
                 folder21.add(snapData, 'fileName').onChange(setValue);
@@ -902,6 +913,7 @@
                 function setValue() {
                     fName = snapData.fileName;
                 }
+                
                 
                 //#endregion
                 
@@ -1045,7 +1057,7 @@
                 }
 
                 scene.add(model);                
-                poo.push([model.position.z - 250 , model.position.x, 3]);
+                poo.push([model.position.z , model.position.x, 3]);
                 console.log(poo);
                 }
             )
@@ -1080,7 +1092,7 @@
                             
                             if(Math.abs(poo[1][2] - Math.abs(poo[0][2])) <= 1) {
                                 if(poo[0][0] - cameraPos.z < 10 && cameraPos.x == poo[0][1]){
-                                    console.log("endgame");    
+                                    console.log("endgame"); 
                                     walk = false;
                                     endGame = true;
                                 }
@@ -1096,7 +1108,6 @@
                         }
                             
                     }
-                        console.log(poo[0][2]);
                         for (let index = 0; index < poo.length; index++) {
                             if(poo[index][1] == cameraPos.x && poo[index][2] == 1){
                                 // console.log("change lane!")
@@ -1122,15 +1133,16 @@
                                 
                                 break;
                             case 3: // box - jump
-
+                                // console.log(poo[0][0]-cameraPos.z);
                                 // if(poo[0][1] == cameraPos.x){
                                     // console.log("'box' jump!")
+                                if ((poo[0][0]-cameraPos.z-100) < 10){
                                     jump = true;
-                                    resetFlags();
+                                    // resetFlags();
 
                                     jumpStart = true;
-                                    console.log("Jump!");
-
+                                    // console.log("Jump!");
+                                }
                                 // }
 
                                 break;
@@ -1144,8 +1156,13 @@
             
 
             // --> Walk;
-            if(cameraPos.z < distToilet -300 && walk){
-                
+            if(cameraPos.z < distToilet -100 && walk){
+                if (!runStart){
+                    // resetFlags();
+                    // idleStart = false;
+                    // runStart = true;
+                }
+
                 // run
                 cameraPos.z += speed/5                
 
@@ -1165,9 +1182,12 @@
                 // --> End of "Change lane".
 
             }else if (cameraPos.z == distToilet -300){
+                resetFlags();
+                idleStart = false;
+                dabStart = true;   
                 console.log("Congratz");
             }else{
-                console.log("didnt start yet");
+                // console.log("didnt start yet");
             }
             // --> End of "Walk".
             
@@ -1177,30 +1197,48 @@
 
         var speed = 40;
 
+        function randomScene () {
+            addBox(1000);
+            addBox(2000);
+        }
 
         function animate() {
             
             requestAnimationFrame(animate);
-            if (loading) loadJSON();
+            if (loading) {
+                loadJSON();
+                randomScene();
+            }
 
             if (bss[0])
                 translationEnv(speed);
+
+            if (walk){
+                // resetFlags();
+                idleStart = false;
+                runStart = true;
+                
+
+            }
 
             if (idleStart) {
                 var anim = idleAnimation(idleFlags, parsedPoses, idleCounter, inc);
                 inc = anim[0];
                 idleCounter = anim[1];
             }
-            else if (runStart) inc = runAnimation(runFlags, parsedPoses, inc);
             else if (jumpStart) {
-                var anim  = jumpAnimation(jumpStart, jumpFlags, parsedPoses, inc);
+                var anim  = jumpAnimation(jumpStart, walk, speed, jumpFlags, parsedPoses, inc);
                 inc = anim[0];
                 jumpStart = anim[1];
+                walk = anim[2];
+                speed = anim[3];
+                cameraPos.z += speed/4;
+                if (walk) resetFlags();
             }
+            else if (runStart) inc = runAnimation(runFlags, parsedPoses, inc);
             else if (slipStart) inc = slipAnimation(slipFlags, parsedPoses, inc);
             else if (fallStart) inc = fallAnimation(fallFlags, parsedPoses, inc);
             else if (dabStart) inc = dabAnimation(dabFlags, parsedPoses, inc);
-
 
 
             const t = clock.getElapsedTime();

@@ -183,14 +183,15 @@ function idleAnimation (flags, poses, counter, k) {
     return [k, counter];
 }
 
-function jumpAnimation(start, flags, poses, k) {
+function jumpAnimation(start, walk, z_speed, flags, poses, k) {
     var p1 = poses["jump01"];
     var p2 = poses["jump02"];
     var p3 = poses["jump03"];
     var p4 = poses["jump04"];
     var speed = 0.06;
-    
+    walk = false;
     if (flags["flag00"]) {
+        z_speed = 5;
         var currPose = JSON.stringify(bss_rotations);
         currPose = jsonToArrayR(JSON.parse(currPose));
         loadPoseR(letr3D(currPose, p1, k));
@@ -203,7 +204,7 @@ function jumpAnimation(start, flags, poses, k) {
     }
     
     else if (flags["flag01"]) {
-        // if (k>0.5) bss[0].position.y += (1.2-bss[0].position.y)*k;
+        z_speed = 5;
         loadPoseR(letr3D(p1, p2, k));
         k += speed;
         if (k >= 1.0) {
@@ -214,6 +215,7 @@ function jumpAnimation(start, flags, poses, k) {
     }
 
     else if (flags["flag02"]) {
+        z_speed = 50;
         bss[0].position.y += (1.6 - bss[0].position.y)*k;
         speed = speed*2;
 
@@ -229,6 +231,8 @@ function jumpAnimation(start, flags, poses, k) {
     }
 
     else if (flags["flag03"]) {
+        z_speed = 30;
+
         bss[0].position.y += (1.2 - bss[0].position.y)*k;
         speed = speed*2;
         loadPoseR(letr3D(p3, p4, k));
@@ -243,6 +247,7 @@ function jumpAnimation(start, flags, poses, k) {
     }
 
     else if (flags["flag04"]) {
+        z_speed = 10;
         bss[0].position.y += (1.0- bss[0].position.y)*k;
         loadPoseR(letr3D(p4, p1, k));
         k += speed;
@@ -250,76 +255,17 @@ function jumpAnimation(start, flags, poses, k) {
             flags["flag04"] = false;
             flags["flag00"] = true;
             start = false;
+            walk = true;
+            z_speed = 40;
             k = 0;
             }
     }
 
 
-    return [k, start];
+    return [k, start, walk, z_speed];
 }
 
-function fallAnimation (flags, poses, k) {
-    var p1 = poses["fall01"];
-    var p2 = poses["fall02"];
-    var speed = 0.06;
-    
-    if (flags["flag00"]) {
-        speed = speed *3;
 
-        var currPose = JSON.stringify(bss_rotations);
-        currPose = jsonToArrayR(JSON.parse(currPose));
-        loadPoseR(letr3D(currPose, p1, k));
-        k += speed;
-        if (k >= 1.0) {
-            flags["flag00"] = false;
-            flags["flag01"] = true;
-            k = 0;
-        }
-    }
-    
-    else if (flags["flag01"]) {
-        speed = speed *2;
-        // if (k>0.5) speed = speed/2;
-        // if (k>0.5) bss[0].position.y += (1.2-bss[0].position.y)*k;
-        loadPoseR(letr3D(p1, p2, k));
-        k += speed;
-        if (k >= 1.0) {
-            flags["flag01"] = false;
-            flags["flag02"] = true;
-            k = 0;
-            }
-    }
-
-    return k;
-}
-
-function dabAnimation (flags ,poses, k) {
-    var p1 = poses["dabPose"];
-    var p2 = poses["idle01"];
-    var speed = 0.05;
-
-    if (flags["flag01"]){
-        var currPose = JSON.stringify(bss_rotations);
-        currPose = jsonToArrayR(JSON.parse(currPose));
-        loadPoseR(letr3D(currPose, p1, k));
-        k += speed;
-        if (k >= 1.0) {
-            flags["flag01"] = false;
-            flags["flag02"] = true;
-            k = 0;
-        }
-    }
-    else if (flags["flag02"]) {
-        loadPoseR(letr3D(p1, p2, k));
-        k += speed;
-        if (k>= 1.0) {
-            flags["flag02"] = false;
-            // flags["flag01"] = true;
-            k = 0;
-        }
-    }
-    return k;
-}
 
 function runAnimation(flags, poses, k) {
     var p1 = poses["runFrame1"];
@@ -333,8 +279,8 @@ function runAnimation(flags, poses, k) {
         loadPoseR(letr3D(currPose, p1, k));
         k += speed;
         if (k >= 1.0) {
-            flags["flag01"] = true;
             flags["flag00"] = false;
+            flags["flag01"] = true;
             k = 0;
         }
     }
@@ -421,5 +367,68 @@ function slipAnimation(flags, poses, k) {
 
     k += speed;
     speed = speed / 1.5;
+    return k;
+}
+
+function fallAnimation (flags, poses, k) {
+    var p1 = poses["fall01"];
+    var p2 = poses["fall02"];
+    var speed = 0.06;
+    
+    if (flags["flag00"]) {
+        speed = speed *3;
+
+        var currPose = JSON.stringify(bss_rotations);
+        currPose = jsonToArrayR(JSON.parse(currPose));
+        loadPoseR(letr3D(currPose, p1, k));
+        k += speed;
+        if (k >= 1.0) {
+            flags["flag00"] = false;
+            flags["flag01"] = true;
+            k = 0;
+        }
+    }
+    
+    else if (flags["flag01"]) {
+        speed = speed *2;
+        // if (k>0.5) speed = speed/2;
+        // if (k>0.5) bss[0].position.y += (1.2-bss[0].position.y)*k;
+        loadPoseR(letr3D(p1, p2, k));
+        k += speed;
+        if (k >= 1.0) {
+            flags["flag01"] = false;
+            flags["flag02"] = true;
+            k = 0;
+            }
+    }
+
+    return k;
+}
+
+function dabAnimation (flags ,poses, k) {
+    var p1 = poses["dabPose"];
+    var p2 = poses["idle01"];
+    var speed = 0.05;
+
+    if (flags["flag01"]){
+        var currPose = JSON.stringify(bss_rotations);
+        currPose = jsonToArrayR(JSON.parse(currPose));
+        loadPoseR(letr3D(currPose, p1, k));
+        k += speed;
+        if (k >= 1.0) {
+            flags["flag01"] = false;
+            flags["flag02"] = true;
+            k = 0;
+        }
+    }
+    else if (flags["flag02"]) {
+        loadPoseR(letr3D(p1, p2, k));
+        k += speed;
+        if (k>= 1.0) {
+            flags["flag02"] = false;
+            // flags["flag01"] = true;
+            k = 0;
+        }
+    }
     return k;
 }
