@@ -14,9 +14,14 @@
     <script src="js/libs/inflate.min.js"></script>
     <script src="js/loaders/GLTFLoader.js"></script>
     <script src="js/loaders/OBJLoader.js"></script>
+    <script src="js/loaders/LoaderSupport.js"></script>
+    <script src="js/loaders/MTLLoader.js"></script>
+
+    <script src="js/loaders/OBJLoader2.js"></script>
 
 
-    <!-- <script src="js/controls/OrbitControls.js"></script> -->
+
+    <script src="js/controls/OrbitControls.js"></script>
 
     <script src="js/WebGL.js"></script>
     <script src="js/libs/stats.min.js"></script>
@@ -56,10 +61,11 @@
         var frame = new Array();
         var k = 1;
         var cameraPos = new THREE.Vector3(0, 200, -500);
-        var distToilet = 10000; // distance to the toilet
+        var distToilet = 5000; // distance to the toilet
 
         var t_loader = new THREE.TextureLoader();
-
+        var map = t_loader.load('models/obj/Rock/waterish.jpg');
+        var material = new THREE.MeshPhongMaterial({map: map});
         var rootNode;
         var rightArm;
 
@@ -184,7 +190,9 @@
 
             
             scene = new THREE.Scene();
-            scene.background = new THREE.Color(0xa0a0a0);
+            // scene.background = new THREE.Color(0xa0a0a0);
+            scene.background = new THREE.Color('black');
+
             // scene.fog = new THREE.Fog(0xa0a0a0, 200, 1000);
 
             cameraModel = new THREE.Scene(); // to move camera and player sync, parent node of them
@@ -193,8 +201,12 @@
             camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 1, 10000);
             camera.position.set(cameraPos.x, cameraPos.y, cameraPos.z);
             camera.rotation.y = Math.PI;
-            cameraModel.add(camera);
+            // camera.rotation._x = -1.4148447059229226;
+            // camera.rotation._y = 0.17807950832127517;
+            // camera.rotation._z = 0.8448773892010358;
 
+            cameraModel.add(camera);
+            
             light = new THREE.HemisphereLight(0xffffff, 0x444444);
             light.position.set(100, 200, 0);
             scene.add(light);
@@ -206,7 +218,7 @@
             light.shadow.camera.bottom = - 100;
             light.shadow.camera.left = - 120;
             light.shadow.camera.right = 120;
-            scene.add(light);
+            // scene.add(light);
 
             // ground
             for (let index = -1; index <= 1; index += 2) {
@@ -227,9 +239,11 @@
             // grid.material.opacity = 0.2;
             // grid.material.transparent = true;
             // scene.add(grid);
-            var obj_loader = new THREE.OBJLoader();     
-            var toilet;       
-
+            var obj_loader = new THREE.OBJLoader();  
+            
+            var toilet; 
+            var streetLight;      
+            
             // load a resource
             obj_loader.load(
                 // resource URL
@@ -244,11 +258,123 @@
                     object.position.x = -10;
                     object.position.z = distToilet;
                     object.rotateOnAxis(new THREE.Vector3(0, 0, 1), Math.PI);
-
+                    
                     scene.add(object);
                     toilet = object;
                 }
-            );
+                );
+
+
+            /// Lamba objesini MTL dosyasindaki configle ekleyince texturelariyla beraber geliyor.
+            /// DIKKAT! Bunun icin html'e importlar yapmak gerekiyor.
+            var lampPositionsZ = [1500, 2500, 3500];
+
+            
+            var objLoader = new THREE.OBJLoader2();  
+            objLoader.loadMtl('models/obj/Street_Light/Lamp.mtl', null, (materials) => {
+                objLoader.setMaterials(materials);
+                        objLoader.load(
+                            'models/obj/Street_Light/Lamp.obj', (event) => {
+                                const root = event.detail.loaderRootNode;
+                                root.rotation.x = 180 * Math.PI/180;
+                            root.scale.x = 35;
+                            root.scale.y = 35;
+                            root.scale.z = 35;
+                            root.position.y = 0;
+                            root.position.x = 100;
+                            root.position.z = lampPositionsZ[0];
+                            root.rotateOnAxis(new THREE.Vector3(0, 0, 1), Math.PI);
+                            
+                            scene.add(root);
+                            // compute the box that contains all the stuff
+                            // from root and below
+                            const box = new THREE.Box3().setFromObject(root);
+                        
+                            const boxSize = box.getSize(new THREE.Vector3()).length();
+                            const boxCenter = box.getCenter(new THREE.Vector3());
+                            
+                            });
+                        });
+
+            var objLoader2 = new THREE.OBJLoader2();  
+                
+            objLoader2.loadMtl('models/obj/Street_Light/Lamp.mtl', null, (materials) => {
+                objLoader2.setMaterials(materials);
+                        objLoader2.load(
+                            'models/obj/Street_Light/Lamp.obj', (event) => {
+                                const root = event.detail.loaderRootNode;
+                                root.rotation.x = 180 * Math.PI/180;
+                            root.scale.x = 35;
+                            root.scale.y = 35;
+                            root.scale.z = 35;
+                            root.position.y = 0;
+                            root.position.x = 100;
+                            root.position.z = lampPositionsZ[1];
+                            root.rotateOnAxis(new THREE.Vector3(0, 0, 1), Math.PI);
+                            
+                            scene.add(root);
+                            // compute the box that contains all the stuff
+                            // from root and below
+                            const box = new THREE.Box3().setFromObject(root);
+                        
+                            const boxSize = box.getSize(new THREE.Vector3()).length();
+                            const boxCenter = box.getCenter(new THREE.Vector3());
+                            
+                            });
+                        });
+            var objLoader3 = new THREE.OBJLoader2();  
+            
+            objLoader3.loadMtl('models/obj/Street_Light/Lamp.mtl', null, (materials) => {
+                objLoader3.setMaterials(materials);
+                        objLoader3.load(
+                            'models/obj/Street_Light/Lamp.obj', (event) => {
+                                const root = event.detail.loaderRootNode;
+                                root.rotation.x = 180 * Math.PI/180;
+                            root.scale.x = 35;
+                            root.scale.y = 35;
+                            root.scale.z = 35;
+                            root.position.y = 0;
+                            root.position.x = 100;
+                            root.position.z = lampPositionsZ[2];
+                            root.rotateOnAxis(new THREE.Vector3(0, 0, 1), Math.PI);
+                            
+                            scene.add(root);
+                            // compute the box that contains all the stuff
+                            // from root and below
+                            const box = new THREE.Box3().setFromObject(root);
+                        
+                            const boxSize = box.getSize(new THREE.Vector3()).length();
+                            const boxCenter = box.getCenter(new THREE.Vector3());
+                            
+                            });
+                });
+
+
+            // const color = 0xFFFFFF;
+            // const color = 0xFFC58F;  
+            const color = 0xffd700; 
+            const intensity = 1;
+            const decay = 2;
+            const distanceLight = 800;   
+            const power = 10;     
+            var posX  = [65, 83, 75, 75];
+            
+            for (l in lampPositionsZ) {
+                var posZ  = [lampPositionsZ[l], lampPositionsZ[l], lampPositionsZ[l]+10, lampPositionsZ[l]-5];
+                /// Lambanin etrafinda 4 tane isik. 
+                /// Sebep: bir isigi bir objenin icine koyunca etrafini aydinlatiyor ama objenin kendisi etkilenmiyor.
+                for (i=0; i<4; i++) {
+                    const lampLight = new THREE.PointLight(color, intensity);
+                    lampLight.position.set(posX[i], 175, posZ[i]);
+                    lampLight.power = power;
+                    lampLight.decay = decay;
+                    lampLight.distance = distanceLight;
+                    scene.add(lampLight);
+                    /// Point Light objelerini sahnede belirtmek icin yardimci yapi.
+                    // const helper = new THREE.PointLightHelper(lampLight);
+                    // scene.add(helper);
+                }
+            }
             // model
             var loader = new THREE.GLTFLoader();
 
@@ -929,8 +1055,8 @@
             renderer.shadowMap.enabled = true;
             container.appendChild(renderer.domElement);
 
-            // controls = new THREE.OrbitControls(camera, renderer.domElement);
-            // controls.target.set(0, 100, 0);
+            controls = new THREE.OrbitControls(camera, renderer.domElement);
+            // controls.target.set(100, 0, 500);
             // controls.update();
 
             window.addEventListener('resize', onWindowResize, false);
@@ -1002,7 +1128,7 @@
                 }
             )
         }
-        
+
         function addIce(direction, distance=0){ // returns 2
             var obj_loader = new THREE.OBJLoader();
             obj_loader.load(                
@@ -1015,7 +1141,11 @@
                     direction > 0 ? object.position.x = -60: object.position = 0;
                     
                     object.position.z = cameraModel.position.z + distanceToAdd + distance;
+                    object.traverse( function ( node ) {
 
+                    if ( node.isMesh ) node.material = material;
+
+                    } );
                     if (poo){ // check if its empty or not
                         for (let index = 0; index < poo.length; index++) {
                             if((poo[index][1] == (direction * -30) || poo[index][2] == 3) && poo[index][0] == object.position.z - 300){ // check for ice and sign
@@ -1026,7 +1156,7 @@
                     }
 
                     scene.add(object);
-                    poo.push([object.position.z - 300, object.position.x + 30, 2]);
+                    poo.push([object.position.z, object.position.x + 30, 2]);
                     console.log(poo);
                 }
             )
@@ -1049,7 +1179,7 @@
 
                 if (poo){ // check if its empty or not
                     for (let index = 0; index < poo.length; index++) {
-                        if(poo[index][0] == model.position.z - 250){
+                        if(poo[index][0] == model.position.z){
                             console.log("Not Empty");
                             return;
                         }                    
@@ -1074,7 +1204,6 @@
 
             if(callOnce){
                 callOnce = false;
-                // console.log("dasuhgkjashdf");
                 cameraPos.x = 30;
 
                 cameraPos.y = 0;
@@ -1087,26 +1216,24 @@
                 if(poo[index] && poo[index][0] -cameraPos.z > 0){
                     
                     if (poo[1]){
-                        // console.log("heyy", poo[0][2], poo[1][2]);
                         if(poo[0][2] == 2 && poo[1][2] == 3) {
                             
                             if(Math.abs(poo[1][2] - Math.abs(poo[0][2])) <= 1) {
                                 if(poo[0][0] - cameraPos.z < 10 && cameraPos.x == poo[0][1]){
+                                    // if (walk) resetFlags();
                                     console.log("endgame"); 
                                     walk = false;
+                                    fallStart = true;
                                     endGame = true;
                                 }
                             }
-                            
                         }
-
                         for (let index = 0; index < poo.length; index++) {
                             if(poo[index][1] == cameraPos.x && poo[index][2] == 1){
                                 // console.log("change lane!")
                                 changeLane = true;
                             }                                                                    
                         }
-                            
                     }
                         for (let index = 0; index < poo.length; index++) {
                             if(poo[index][1] == cameraPos.x && poo[index][2] == 1){
@@ -1114,42 +1241,25 @@
                                 changeLane = true;
                             }                                                                    
                         }
-
                         switch(poo[0][2]){
                             case 1: // slippery sign - change lane (-30, 30)
-                                
-                                
-                                
-
                                 break;
                             case 2: // ice - jump
-
-                                if(poo[0][1] == cameraPos.x){
+                                if((poo[0][0] -cameraPos.z-100) <10){
                                     // console.log("'ice' jump!")
                                     jump = true;
-                                    resetFlags();
-                                    jumpStart = true;
+                                    // resetFlags();
+                                    slipStart = true;
                                 }
-                                
                                 break;
                             case 3: // box - jump
-                                // console.log(poo[0][0]-cameraPos.z);
-                                // if(poo[0][1] == cameraPos.x){
-                                    // console.log("'box' jump!")
                                 if ((poo[0][0]-cameraPos.z-100) < 10){
                                     jump = true;
-                                    // resetFlags();
-
                                     jumpStart = true;
-                                    // console.log("Jump!");
                                 }
-                                // }
-
                                 break;
-                        }
-                                       
+                        }                     
                 }
-
                 poo[index][0] -cameraPos.z < 0 ? poo.shift(): 0 ;
             }
 
@@ -1157,11 +1267,6 @@
 
             // --> Walk;
             if(cameraPos.z < distToilet -100 && walk){
-                if (!runStart){
-                    // resetFlags();
-                    // idleStart = false;
-                    // runStart = true;
-                }
 
                 // run
                 cameraPos.z += speed/5                
@@ -1181,8 +1286,9 @@
                 cameraPos.x += inpol;
                 // --> End of "Change lane".
 
-            }else if (cameraPos.z == distToilet -300){
-                resetFlags();
+            }else if (cameraPos.z >= distToilet -300){
+                if (walk) resetFlags();
+                walk = false;
                 idleStart = false;
                 dabStart = true;   
                 console.log("Congratz");
@@ -1198,8 +1304,13 @@
         var speed = 40;
 
         function randomScene () {
-            addBox(1000);
-            addBox(2000);
+            addIce(0, 1600);
+            addIce(0, 1650);
+            addIce(0, 1700);
+            addIce(0, 1750);
+            addBox(1300);
+
+
         }
 
         function animate() {
@@ -1214,12 +1325,10 @@
                 translationEnv(speed);
 
             if (walk){
-                // resetFlags();
                 idleStart = false;
-                runStart = true;
-                
-
+                runStart = true;            
             }
+            else runStart = false;
 
             if (idleStart) {
                 var anim = idleAnimation(idleFlags, parsedPoses, idleCounter, inc);
@@ -1235,10 +1344,26 @@
                 cameraPos.z += speed/4;
                 if (walk) resetFlags();
             }
-            else if (runStart) inc = runAnimation(runFlags, parsedPoses, inc);
-            else if (slipStart) inc = slipAnimation(slipFlags, parsedPoses, inc);
-            else if (fallStart) inc = fallAnimation(fallFlags, parsedPoses, inc);
+            else if (slipStart) {
+                var anim = slipAnimation(slipStart, walk, slipFlags, parsedPoses, inc);
+                inc = anim[0];
+                slipStart = anim[1];
+                walk = anim[2];
+                cameraPos.z += speed/7;
+            }
+            else if (fallStart) {
+                cameraModel.position.z += speed/10;
+                cameraModel.position.y += -1.0;
+
+                var anim = fallAnimation(fallStart, fallFlags, parsedPoses, inc);
+                inc = anim[0];
+                fallStart = anim[1];
+                if (!fallStart) endGame = true; console.log("end");
+                walk = false;
+
+            }
             else if (dabStart) inc = dabAnimation(dabFlags, parsedPoses, inc);
+            else if (runStart) inc = runAnimation(runFlags, parsedPoses, inc);
 
 
             const t = clock.getElapsedTime();
@@ -1248,7 +1373,8 @@
             if (mixer) {
                 mixer.update(delta);
             }
-
+            // controls.target.set(0, -200, -500);
+            // controls.update();
             renderer.render(scene, camera);
 
             stats.update();
