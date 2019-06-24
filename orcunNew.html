@@ -1087,7 +1087,7 @@
         var originalCamPos;
         var secondCamPos = [-330, 850, 675, -90 * Math.PI/180, -30 * Math.PI/180 , -90 * Math.PI/180];
 
-        function translationEnv(speed) { // to translate model and camera and the general game logic
+        function translationEnv(speed) { // to translate model, camera - the general game logic
             if (callOnce && obstacles) {
                 controls.enabled = false;
                 callOnce = false;
@@ -1322,19 +1322,17 @@
 
             requestAnimationFrame(animate);
 
-
-
             if (loading) {
                 loadJSON();
                 // randomScene();
             }
 
             if (bss[0] && poo[2] && obstacles[2]) { // if game loaded, run mechanics
+
                 distanceToCone = poo[0][0] - cameraModel.position.z + 150;
                 distanceToIce = poo[1][0] - cameraModel.position.z + 100;
                 distanceToBox = poo[2][0] - cameraModel.position.z + 110;
                 distanceToEnd = toilet.position.z - cameraModel.position.z - 100;
-
 
                 translationEnv(speed);
 
