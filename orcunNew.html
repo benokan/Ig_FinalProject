@@ -2,6 +2,7 @@
 <html lang="en">
 
 <head>
+    <meta http-equiv="content-type" content="text/html;charset=utf-8" />
     <title>three.js webgl - FBX loader</title>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
@@ -14,7 +15,9 @@
     <script src="js/libs/inflate.min.js"></script>
     <script src="js/loaders/GLTFLoader.js"></script>
     <script src="js/loaders/OBJLoader.js"></script>
-
+    <script src="js/loaders/LoaderSupport.js"></script>
+    <script src="js/loaders/MTLLoader.js"></script>
+    <script src="js/loaders/OBJLoader2.js"></script>
     <script src="js/controls/OrbitControls.js"></script>
     <script src="js/controls/DragControls.js"></script>
     <script src="js/controls/TrackballControls.js"></script>
@@ -24,7 +27,7 @@
     <script src="js/libs/dat.gui.min.js"></script>
     <script src="animation_functions.js"></script>
 
-    <script>
+    <script charset="UTF-8">
 
 
         if (WEBGL.isWebGLAvailable() === false) {
@@ -64,7 +67,8 @@
         var saveZ = [[0], [0], [0]];
 
         var t_loader = new THREE.TextureLoader();
-
+        var map = t_loader.load('models/obj/Rock/waterish.jpg');
+        var material = new THREE.MeshPhongMaterial({ map: map });
         var rootNode;
         var rightArm;
 
@@ -94,6 +98,10 @@
         var slipStart = false;
         var fallStart = false;
         var dabStart = false;
+        var husoFlag = false;
+        var wcFlag = false;
+        var tHuso, tToilet;
+
 
         init();
 
@@ -166,6 +174,7 @@
             );
         }
 
+
         function resetFlags() {
             idleFlags = { "flag01": true, "flag02": false, "flag03": false, "flag04": false, "flag05": false };
             jumpFlags = { "flag00": true, "flag01": false, "flag02": false, "flag03": false, "flag04": false };
@@ -182,6 +191,7 @@
             inc = 0;
             idleCounter = 0;
         }
+
         function init() {
             container = document.createElement('div');
             document.body.appendChild(container);
@@ -195,8 +205,9 @@
 
 
             scene = new THREE.Scene();
-            scene.background = new THREE.Color(0xa0a0a0);
+            // scene.background = new THREE.Color(0xa0a0a0);
             // scene.fog = new THREE.Fog(0xa0a0a0, 200, 1000);
+            scene.background = new THREE.Color('black');
 
             cameraModel = new THREE.Scene(); // to move camera and player sync, parent node of them
             scene.add(cameraModel);
@@ -224,14 +235,14 @@
             light.position.set(100, 200, 0);
             scene.add(light);
 
-            light = new THREE.DirectionalLight(0xffffff);
-            light.position.set(0, 2000, 100);
-            light.castShadow = true;
-            light.shadow.camera.top = 180;
-            light.shadow.camera.bottom = - 100;
-            light.shadow.camera.left = - 120;
-            light.shadow.camera.right = 120;
-            scene.add(light);
+            // light = new THREE.DirectionalLight(0xffffff);
+            // light.position.set(0, 2000, 100);
+            // light.castShadow = true;
+            // light.shadow.camera.top = 180;
+            // light.shadow.camera.bottom = - 100;
+            // light.shadow.camera.left = - 120;
+            // light.shadow.camera.right = 120;
+            // scene.add(light);
 
             // ground
             for (let index = -1; index <= 1; index += 2) {
@@ -248,11 +259,7 @@
                 scene.add(floor);
             }
 
-
-            // var grid = new THREE.GridHelper(2000, 20, 0x000000, 0x000000);
-            // grid.material.opacity = 0.2;
-            // grid.material.transparent = true;
-            // scene.add(grid);
+            var streetLight;
 
             var obj_loader = new THREE.OBJLoader();
 
@@ -275,6 +282,117 @@
                     toilet = object;
                 }
             );
+
+            /// Lamba objesini MTL dosyasindaki configle ekleyince texturelariyla beraber geliyor.
+            /// DIKKAT! Bunun icin html'e importlar yapmak gerekiyor.
+            var lampPositionsZ = [distToilet/3, 2*distToilet/3]; //, distToilet -100];
+
+
+            var objLoader = new THREE.OBJLoader2();
+            objLoader.loadMtl('models/obj/Street_Light/Lamp.mtl', null, (materials) => {
+                objLoader.setMaterials(materials);
+                objLoader.load(
+                    'models/obj/Street_Light/Lamp.obj', (event) => {
+                        const root = event.detail.loaderRootNode;
+                        root.rotation.x = 180 * Math.PI / 180;
+                        root.scale.x = 35;
+                        root.scale.y = 35;
+                        root.scale.z = 35;
+                        root.position.y = 0;
+                        root.position.x = 100;
+                        root.position.z = lampPositionsZ[0];
+                        root.rotateOnAxis(new THREE.Vector3(0, 0, 1), Math.PI);
+
+                        scene.add(root);
+                        // compute the box that contains all the stuff
+                        // from root and below
+                        const box = new THREE.Box3().setFromObject(root);
+
+                        const boxSize = box.getSize(new THREE.Vector3()).length();
+                        const boxCenter = box.getCenter(new THREE.Vector3());
+
+                    });
+            });
+
+            var objLoader2 = new THREE.OBJLoader2();
+
+            objLoader2.loadMtl('models/obj/Street_Light/Lamp.mtl', null, (materials) => {
+                objLoader2.setMaterials(materials);
+                objLoader2.load(
+                    'models/obj/Street_Light/Lamp.obj', (event) => {
+                        const root = event.detail.loaderRootNode;
+                        root.rotation.x = 180 * Math.PI / 180;
+                        root.scale.x = 35;
+                        root.scale.y = 35;
+                        root.scale.z = 35;
+                        root.position.y = 0;
+                        root.position.x = 100;
+                        root.position.z = lampPositionsZ[1];
+                        root.rotateOnAxis(new THREE.Vector3(0, 0, 1), Math.PI);
+
+                        scene.add(root);
+                        // compute the box that contains all the stuff
+                        // from root and below
+                        const box = new THREE.Box3().setFromObject(root);
+
+                        const boxSize = box.getSize(new THREE.Vector3()).length();
+                        const boxCenter = box.getCenter(new THREE.Vector3());
+
+                    });
+            });
+            // var objLoader3 = new THREE.OBJLoader2();
+
+            // objLoader3.loadMtl('models/obj/Street_Light/Lamp.mtl', null, (materials) => {
+            //     objLoader3.setMaterials(materials);
+            //     objLoader3.load(
+            //         'models/obj/Street_Light/Lamp.obj', (event) => {
+            //             const root = event.detail.loaderRootNode;
+            //             root.rotation.x = 180 * Math.PI / 180;
+            //             root.scale.x = 35;
+            //             root.scale.y = 35;
+            //             root.scale.z = 35;
+            //             root.position.y = 0;
+            //             root.position.x = 100;
+            //             root.position.z = lampPositionsZ[2];
+            //             root.rotateOnAxis(new THREE.Vector3(0, 0, 1), Math.PI);
+
+            //             scene.add(root);
+            //             // compute the box that contains all the stuff
+            //             // from root and below
+            //             const box = new THREE.Box3().setFromObject(root);
+
+            //             const boxSize = box.getSize(new THREE.Vector3()).length();
+            //             const boxCenter = box.getCenter(new THREE.Vector3());
+
+            //         });
+            // });
+
+
+            // const color = 0xFFFFFF;
+            // const color = 0xFFC58F;  
+            const color = 0xffd700;
+            const intensity = 1;
+            const decay = 2;
+            const distanceLight = 800;
+            const power = 10;
+            var posX = [65, 83, 75, 75];
+
+            for (l in lampPositionsZ) {
+                var posZ = [lampPositionsZ[l], lampPositionsZ[l], lampPositionsZ[l] + 10, lampPositionsZ[l] - 5];
+                /// Lambanin etrafinda 4 tane isik. 
+                /// Sebep: bir isigi bir objenin icine koyunca etrafini aydinlatiyor ama objenin kendisi etkilenmiyor.
+                for (i = 0; i < 4; i++) {
+                    const lampLight = new THREE.PointLight(color, intensity);
+                    lampLight.position.set(posX[i], 175, posZ[i]);
+                    lampLight.power = power;
+                    lampLight.decay = decay;
+                    lampLight.distance = distanceLight;
+                    scene.add(lampLight);
+                    /// Point Light objelerini sahnede belirtmek icin yardimci yapi.
+                    // const helper = new THREE.PointLightHelper(lampLight);
+                    // scene.add(helper);
+                }
+            }
 
 
             // model
@@ -441,8 +559,6 @@
                     }
 
                     //#region InitGuiVariables
-
-
 
                     // Left Shoulder
                     this.ls_rotx = bss_rotations[4].x;
@@ -963,6 +1079,74 @@
 
         } // end of init()
 
+
+        function textHuso(flag) {
+
+            var loader = new THREE.FontLoader();
+            loader.load('fonts/gentilis_regular.typeface.json', function (font) {
+                var xMid;
+                var color = 0xffd700;//0x006699;
+                var matDark = new THREE.LineBasicMaterial({
+                    color: color,
+                    side: THREE.DoubleSide
+                });
+                var matLite = new THREE.MeshBasicMaterial({
+                    color: color,
+                    transparent: true,
+                    opacity: 1.0,
+                    side: THREE.DoubleSide
+                });
+                var message = "Huso  [\ hü-'so\]";
+
+                var shapes = font.generateShapes(message, 100);
+                var geometry = new THREE.ShapeBufferGeometry(shapes);
+                geometry.computeBoundingBox();
+                xMid = - 0.5 * (geometry.boundingBox.max.x - geometry.boundingBox.min.x);
+                geometry.translate(xMid, 0, 0);
+                // make shape ( N.B. edge view not visible )
+                tHuso = new THREE.Mesh(geometry, matDark);
+                tHuso.position.z = 220;
+                tHuso.position.y = 20;
+                scene.add(tHuso);
+            });
+        }
+
+        function textToilet() {
+            var loader = new THREE.FontLoader();
+            loader.load('fonts/gentilis_regular.typeface.json', function (font) {
+                var xMid;
+                var color = 0xffd700;//0x006699;
+                var matDark = new THREE.LineBasicMaterial({
+                    color: color,
+                    side: THREE.DoubleSide
+                });
+                var matLite = new THREE.MeshBasicMaterial({
+                    color: color,
+                    transparent: true,
+                    opacity: 1.0,
+                    side: THREE.DoubleSide
+                });
+                var message = "Toilet  [\ 'tȯi-lət\]";
+
+                var shapes = font.generateShapes(message, 100);
+                var geometry = new THREE.ShapeBufferGeometry(shapes);
+                geometry.computeBoundingBox();
+                xMid = - 0.5 * (geometry.boundingBox.max.x - geometry.boundingBox.min.x);
+                geometry.translate(xMid, 0, 0);
+                // make shape ( N.B. edge view not visible )
+                tToilet = new THREE.Mesh(geometry, matDark);
+                tToilet.position.z = 5200;
+                tToilet.position.y = 20;
+                tToilet.rotation.y = Math.PI;
+                scene.add(tToilet);
+            });
+        }
+
+        function removeNode(n) {
+            scene.remove(n);
+        }
+
+
         function onWindowResize() {
 
             camera.aspect = window.innerWidth / window.innerHeight;
@@ -972,22 +1156,6 @@
 
         }
 
-
-        var anim_template = function () {
-            for (i in poseTo) {
-                poseTo[i].normalize();
-                bss_quaternions[i].slerp(poseTo[i], .1);
-            }
-
-        }
-
-        function rev_template() {
-            for (i in poseFrom) {
-                poseFrom[i].normalize();
-                bss_quaternions[i].slerp(poseFrom[i], .1);
-            }
-
-        }
 
         // poo = Positions Of Obstacles = 
         // {[distance to obstacle, #lane, type of obstacle], []...}
@@ -1036,8 +1204,11 @@
                     object.rotation.y = 90 * Math.PI / 180;
 
                     object.traverse(function (x) {
-
-                        if (x.isMesh) obstacles.push(x);
+                        
+                        if (x.isMesh) {
+                            x.material = material;
+                            obstacles.push(x);
+                        } 
 
                     });
 
@@ -1085,14 +1256,14 @@
         var inpol = 1;
         var callOnce = true;
         var originalCamPos;
-        var secondCamPos = [-330, 850, 675, -90 * Math.PI/180, -30 * Math.PI/180 , -90 * Math.PI/180];
+        var secondCamPos = [-330, 850, 675, -90 * Math.PI / 180, -30 * Math.PI / 180, -90 * Math.PI / 180];
 
         function translationEnv(speed) { // to translate model, camera - the general game logic
             if (callOnce && obstacles) {
                 controls.enabled = false;
                 callOnce = false;
                 dragControls = new THREE.DragControls(obstacles, camera, renderer.domElement);
-                
+
                 originalCamPos = [camera.position.x, camera.position.y, camera.position.z,
                 camera.rotation.x, camera.rotation.y, camera.rotation.z];
 
@@ -1104,7 +1275,7 @@
 
 
             if (distanceToEnd < 0) {
-                console.log("Game Over", endGame = true);
+                console.log("Game Over", dabStart = true);
                 return;
             }
 
@@ -1113,8 +1284,8 @@
                 if (notEmpty[0][1] == cameraPos.x - 31 || notEmpty[0][1] == cameraPos.x + 31) { // if player and ice are in same lane
 
                     if (distanceToBox < 0 && !endGame) {
-                        endGame = true;
-                        console.log("endGame", endGame);
+                        
+                        console.log("endGame", fallStart = true);
                     }
                 }
             }
@@ -1126,10 +1297,11 @@
 
             if (notEmpty[0][1] == cameraPos.x - 31 || notEmpty[0][1] == cameraPos.x + 31 && notEmpty[0][0] != 9) {
 
-                if (distanceToIce < 0 && !slip) console.log("slip", slip = true);;
+                if (distanceToCone < 0 && notEmpty[1][0] != 9) console.log("change lane", changeLane = true);
+                if (distanceToIce < 0 && distanceToIce > -50 && !slipStart) console.log("slip", slipStart = true);;
             }
 
-            if (distanceToBox < 0 && !jump && notEmpty[2][0] != 9) console.log("jump", jump = true);
+            if (distanceToBox < 0 && distanceToBox > -50 && !jump && notEmpty[2][0] != 9) console.log("jump", jumpStart = true);
 
             // run
             cameraPos.z += speed / 5;
@@ -1146,6 +1318,7 @@
                 inpol = (2 * 30) / speed;
             } else if (cameraPos.x == -30 || cameraPos.x == 30) { // don't change
                 inpol = 0;
+                
             }
             cameraPos.x += inpol;
 
@@ -1200,7 +1373,7 @@
 
                     once = false;
                     onceCheck = changeView;
-                    
+
                 }
 
             }
@@ -1209,11 +1382,6 @@
         }
 
         var speed = 40;
-
-        function randomScene() {
-            addBox(1000);
-            addBox(2000);
-        }
 
         var changeCam = false;
         var rePos = true;
@@ -1226,13 +1394,13 @@
                     if (notEmpty[i][0] == no) {
                         return false;
                     }
-                }else if ((i != 2 && obj != i)) {
+                } else if ((i != 2 && obj != i)) {
                     if (notEmpty[i][1] == lane) {
                         if (notEmpty[i][0] == no) {
                             return false;
                         }
                     }
-                } 
+                }
             }
 
             return true
@@ -1320,10 +1488,11 @@
             rePos = false;
         }
 
+
+
         function animate() {
 
             requestAnimationFrame(animate);
-
             if (loading) {
                 loadJSON();
                 // randomScene();
@@ -1338,7 +1507,7 @@
 
                 translationEnv(speed);
 
-                if (dragControls) { 
+                if (dragControls) {
                     if (changeView) {
 
                         cameraMovement(secondCamPos);
@@ -1348,7 +1517,7 @@
 
                     } else {
 
-                        cameraMovement(originalCamPos);                        
+                        cameraMovement(originalCamPos);
                         dragControls.enabled ? dragControls.enabled = false : null;
 
                     }
@@ -1360,12 +1529,16 @@
 
             }
 
+
             if (walk) {
-                // resetFlags();
                 idleStart = false;
                 runStart = true;
             }
-
+            else runStart = false;
+            if (!husoFlag) {
+                // textHuso(husoFlag);
+                husoFlag = true;
+            }
             if (idleStart) {
                 var anim = idleAnimation(idleFlags, parsedPoses, idleCounter, inc);
                 inc = anim[0];
@@ -1376,14 +1549,31 @@
                 inc = anim[0];
                 jumpStart = anim[1];
                 walk = anim[2];
-                speed = speed;
+                speed = anim[3];
                 cameraPos.z += speed / 4;
                 if (walk) resetFlags();
             }
-            else if (runStart) inc = runAnimation(runFlags, parsedPoses, inc);
-            else if (slipStart) inc = slipAnimation(slipFlags, parsedPoses, inc);
-            else if (fallStart) inc = fallAnimation(fallFlags, parsedPoses, inc);
+            else if (slipStart) {
+                var anim = slipAnimation(slipStart, walk, slipFlags, parsedPoses, inc);
+                inc = anim[0];
+                slipStart = anim[1];
+                walk = anim[2];
+                cameraPos.z += speed / 20;
+            }
+            else if (fallStart) {
+                cameraModel.position.z += speed / 15;
+                cameraModel.position.y += -1.0;
+
+                var anim = fallAnimation(fallStart, fallFlags, parsedPoses, inc);
+                inc = anim[0];
+                fallStart = anim[1];
+                if (!fallStart) endGame = true; console.log("end");
+                walk = false;
+
+            }
             else if (dabStart) inc = dabAnimation(dabFlags, parsedPoses, inc);
+
+            else if (runStart) { inc = runAnimation(runFlags, parsedPoses, inc); }
 
 
             const t = clock.getElapsedTime();
@@ -1393,12 +1583,7 @@
             if (mixer) {
                 mixer.update(delta);
             }
-
-
-
-
-            renderer.render(scene, changeCam ? gridCamera : camera);
-
+            renderer.render(scene, camera);
 
             stats.update();
 
