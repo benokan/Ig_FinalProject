@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
-
-<head>
+    <head>
+    <meta http-equiv="content-type" content="text/html;charset=utf-8" />
     <title>three.js webgl - FBX loader</title>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
@@ -28,7 +28,7 @@
     <script src="js/libs/dat.gui.min.js"></script>
     <script src="animation_functions.js"></script>
 
-    <script>
+    <script charset="UTF-8">
 
 
         if (WEBGL.isWebGLAvailable() === false) {
@@ -95,7 +95,9 @@
         var slipStart = false;
         var fallStart = false;
         var dabStart = false;
-
+        var husoFlag = false;
+        var wcFlag = false;
+        var tHuso, tToilet;
         init();
         animate();
 
@@ -198,7 +200,7 @@
             cameraModel = new THREE.Scene(); // to move camera and player sync, parent node of them
             scene.add(cameraModel);
 
-            camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 1, 10000);
+            camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 1, 10000); 
             camera.position.set(cameraPos.x, cameraPos.y, cameraPos.z);
             camera.rotation.y = Math.PI;
             // camera.rotation._x = -1.4148447059229226;
@@ -371,8 +373,8 @@
                     lampLight.distance = distanceLight;
                     scene.add(lampLight);
                     /// Point Light objelerini sahnede belirtmek icin yardimci yapi.
-                    // const helper = new THREE.PointLightHelper(lampLight);
-                    // scene.add(helper);
+                    const helper = new THREE.PointLightHelper(lampLight);
+                    scene.add(helper);
                 }
             }
             // model
@@ -1065,8 +1067,75 @@
             stats = new Stats();
             container.appendChild(stats.dom);
 
+        
+            
         } // end of init()
 
+        function textHuso (flag) {
+            
+            var loader = new THREE.FontLoader();
+				loader.load( 'fonts/gentilis_regular.typeface.json', function ( font ) {
+					var xMid;
+					var color = 0xffd700;//0x006699;
+					var matDark = new THREE.LineBasicMaterial( {
+						color: color,
+						side: THREE.DoubleSide
+					} );
+					var matLite = new THREE.MeshBasicMaterial( {
+						color: color,
+						transparent: true,
+						opacity: 1.0,
+						side: THREE.DoubleSide
+					} );
+                    var message = "Huso  [\ hü-'so\]";
+                    
+					var shapes = font.generateShapes( message, 100 );
+					var geometry = new THREE.ShapeBufferGeometry( shapes );
+					geometry.computeBoundingBox();
+					xMid = - 0.5 * ( geometry.boundingBox.max.x - geometry.boundingBox.min.x );
+					geometry.translate( xMid, 0, 0 );
+					// make shape ( N.B. edge view not visible )
+					tHuso = new THREE.Mesh( geometry, matDark );
+                    tHuso.position.z = 220;
+					tHuso.position.y = 20;                    
+                    scene.add( tHuso );
+				} ); 
+        }
+
+        function textToilet () {
+            var loader = new THREE.FontLoader();
+            loader.load( 'fonts/gentilis_regular.typeface.json', function ( font ) {
+                var xMid;
+                var color = 0xffd700;//0x006699;
+                var matDark = new THREE.LineBasicMaterial( {
+                    color: color,
+                    side: THREE.DoubleSide
+                } );
+                var matLite = new THREE.MeshBasicMaterial( {
+                    color: color,
+                    transparent: true,
+                    opacity: 1.0,
+                    side: THREE.DoubleSide
+                } );
+                var message = "Toilet  [\ 'tȯi-lət\]";
+                
+                var shapes = font.generateShapes( message, 100 );
+                var geometry = new THREE.ShapeBufferGeometry( shapes );
+                geometry.computeBoundingBox();
+                xMid = - 0.5 * ( geometry.boundingBox.max.x - geometry.boundingBox.min.x );
+                geometry.translate( xMid, 0, 0 );
+                // make shape ( N.B. edge view not visible )
+                tToilet = new THREE.Mesh( geometry, matDark );
+                tToilet.position.z = 5200;
+                tToilet.position.y = 20;  
+                tToilet.rotation.y = Math.PI;                  
+                scene.add( tToilet );
+				} ); 
+        }
+
+        function removeNode (n) {
+            scene.remove(n);
+        }
 
         function onWindowResize() {
 
@@ -1094,6 +1163,8 @@
 
         }
 
+        // poo = Positions Of Obstacles = 
+        // {[distance to obstacle, #lane, type of obstacle], []...}
         var poo = new Array(); // poo
         var distanceToAdd = 1000; // constant - determines the min distance to put obstacles.
 
@@ -1134,8 +1205,13 @@
             obj_loader.load(                
                 'models/obj/Rock/Rock.obj',
 
+            
+
                 function (object) {
-                    object.scale.x = object.scale.y = object.scale.z = 25;
+
+
+                    object.scale.x = 25;
+                    object.scale.z = 25;
                     object.scale.y = 1;
                     object.position.y = .2;
                     direction > 0 ? object.position.x = -60: object.position = 0;
@@ -1144,6 +1220,7 @@
                     object.traverse( function ( node ) {
 
                     if ( node.isMesh ) node.material = material;
+
 
                     } );
                     if (poo){ // check if its empty or not
@@ -1156,7 +1233,7 @@
                     }
 
                     scene.add(object);
-                    poo.push([object.position.z, object.position.x + 30, 2]);
+                    poo.push([object.position.z, object.position.x + 30, 2]);            
                     console.log(poo);
                 }
             )
@@ -1219,7 +1296,7 @@
                         if(poo[0][2] == 2 && poo[1][2] == 3) {
                             
                             if(Math.abs(poo[1][2] - Math.abs(poo[0][2])) <= 1) {
-                                if(poo[0][0] - cameraPos.z < 10 && cameraPos.x == poo[0][1]){
+                                if(poo[0][0] - cameraPos.z < 20 && cameraPos.x == poo[0][1]){
                                     // if (walk) resetFlags();
                                     console.log("endgame"); 
                                     walk = false;
@@ -1304,10 +1381,10 @@
         var speed = 40;
 
         function randomScene () {
-            addIce(0, 1600);
-            addIce(0, 1650);
-            addIce(0, 1700);
-            addIce(0, 1750);
+            addIce(0, 1775);
+            // addIce(0, 1650);
+            // addIce(0, 1700);
+            // addIce(0, 1750);
             addBox(1300);
 
 
@@ -1329,7 +1406,10 @@
                 runStart = true;            
             }
             else runStart = false;
-
+            if (!husoFlag){
+            textHuso(husoFlag);
+            husoFlag = true;    
+            }
             if (idleStart) {
                 var anim = idleAnimation(idleFlags, parsedPoses, idleCounter, inc);
                 inc = anim[0];
@@ -1349,10 +1429,10 @@
                 inc = anim[0];
                 slipStart = anim[1];
                 walk = anim[2];
-                cameraPos.z += speed/7;
+                cameraPos.z += speed/20;
             }
             else if (fallStart) {
-                cameraModel.position.z += speed/10;
+                cameraModel.position.z += speed/15;
                 cameraModel.position.y += -1.0;
 
                 var anim = fallAnimation(fallStart, fallFlags, parsedPoses, inc);
@@ -1360,10 +1440,11 @@
                 fallStart = anim[1];
                 if (!fallStart) endGame = true; console.log("end");
                 walk = false;
-
+                
             }
             else if (dabStart) inc = dabAnimation(dabFlags, parsedPoses, inc);
-            else if (runStart) inc = runAnimation(runFlags, parsedPoses, inc);
+                
+            else if (runStart) {inc = runAnimation(runFlags, parsedPoses, inc);}
 
 
             const t = clock.getElapsedTime();
@@ -1386,4 +1467,4 @@
 
 </body>
 
-</html>
+</html>text
