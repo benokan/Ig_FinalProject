@@ -253,6 +253,7 @@
             // grid.material.opacity = 0.2;
             // grid.material.transparent = true;
             // scene.add(grid);
+
             var obj_loader = new THREE.OBJLoader();
 
             // load a resource
@@ -322,13 +323,7 @@
                     bss_quaternions.push(bss[key].quaternion);
                 }
 
-                //console.log(model);
-                // bss[0].position.y = 1.0;
                 cameraModel.add(model);
-                // scene.add(model);
-
-
-
 
                 var snapShotFeed = function () {
 
@@ -1020,13 +1015,8 @@
                     if (model.isMesh) obstacles.push(model);
                 });
 
-                // dragControls = new THREE.DragControls(obstacles, camera, renderer.domElement);
-                // dragControls.addEventListener('dragstart', function () { controls.enabled = false; });
-                // dragControls.addEventListener('dragend', function () { controls.enabled = true; });
-
                 scene.add(model);
                 poo.push([model.position.z - 240, model.position.x, 1]);
-                // console.log(poo, 1);
             }
             )
         }
@@ -1051,14 +1041,9 @@
 
                     });
 
-
                     scene.add(object);
 
-                    // dragControls = new THREE.DragControls(obstacles, camera, renderer.domElement);
-                    // dragControls.addEventListener('dragstart', function () { controls.enabled = false; });
-                    // dragControls.addEventListener('dragend', function () { controls.enabled = true; });
                     poo.push([object.position.z - 240, object.position.x, 2]);
-                    // console.log(poo, 2);
                 }
             )
         }
@@ -1084,15 +1069,9 @@
 
                 });
 
-
                 scene.add(model);
 
-                // dragControls = new THREE.DragControls(obstacles, camera, renderer.domElement);
-                // dragControls.addEventListener('dragstart', function () { controls.enabled = false; });
-                // dragControls.addEventListener('dragend', function () { controls.enabled = true; });
-
                 poo.push([model.position.z - 250, model.position.x, 3]);
-                // console.log(poo, 3);
             }
             )
         }
@@ -1108,8 +1087,7 @@
         var originalCamPos;
         var secondCamPos = [-330, 850, 675, -90 * Math.PI/180, -30 * Math.PI/180 , -90 * Math.PI/180];
 
-        function translationEnv(speed) {
-
+        function translationEnv(speed) { // to translate model and camera and the general game logic
             if (callOnce && obstacles) {
                 controls.enabled = false;
                 callOnce = false;
@@ -1180,7 +1158,7 @@
         var once = false;
         var onceCheck = false;
 
-        function placeObstacles() {
+        function placeObstacles() { // save the first position and rotation to interpolate
 
             if (changeView != onceCheck) {
                 if (once) return;
@@ -1196,10 +1174,8 @@
 
 
 
-        function cameraMovement(parameters) {
-            // console.log(parameters);
+        function cameraMovement(parameters) { // move camera to target position and rotation
             nextPar = parameters;
-            // console.log(nextPar);
             savedCamPar = [camera.position.x, camera.position.y, camera.position.z,
             camera.rotation.x, camera.rotation.y, camera.rotation.z];
 
@@ -1215,13 +1191,11 @@
                     savedCamPar[index] += interpol[index] / speedo;
                     camera.rotation.set(savedCamPar[3], savedCamPar[4], savedCamPar[5]);
                     camera.position.set(savedCamPar[0], savedCamPar[1], savedCamPar[2]);
-                    // console.log("zıp that pussy");
                 } else {
                     camera.rotation.set(nextPar[3], nextPar[4], nextPar[5]);
                     camera.position.set(nextPar[0], nextPar[1], nextPar[2]);
 
 
-                    // console.log("geyy");
                     once = false;
                     onceCheck = changeView;
                     
@@ -1243,17 +1217,16 @@
         var rePos = true;
         var notEmpty = [[9, 9], [9, 9], [9, 9]];
 
-        function checkEmpty(obj, no, lane) {
+        function checkEmpty(obj, no, lane) { // check if there is any obstacles in target position
 
             for (let i = 0; i < notEmpty.length; i++) {
                 if (i == 2 || obj == 2) {
                     if (notEmpty[i][0] == no) {
                         return false;
                     }
-                }else if ((i != 2 && obj != i)) { // kutu değilse + // no i değilse
+                }else if ((i != 2 && obj != i)) {
                     if (notEmpty[i][1] == lane) {
                         if (notEmpty[i][0] == no) {
-                            // console.log("heyy", i, no, lane);
                             return false;
                         }
                     }
@@ -1263,7 +1236,7 @@
             return true
         }
 
-        function snapObstacles() {
+        function snapObstacles() { // snap obstacles to the nearest grid position
 
             if (rePos) return;
 
@@ -1277,7 +1250,6 @@
 
 
 
-            // console.log(grid);
             // Repositioning of dragged obstacles
 
             for (let i = 0; i < obstacles.length; i++) {
@@ -1315,7 +1287,6 @@
 
                         saveZ[i] = obstacles[i].position.z;
                     }
-                    // console.log(obstacles[1].position, saveX, saveZ);
 
                 } else {
                     obstacles[i].position.x = saveX[i];
@@ -1328,9 +1299,8 @@
 
         }
 
-        function keepThemOnFloor() {
+        function keepThemOnFloor() { // limit dragging operation in 2d
 
-            // console.log(obstacles[2].position);
 
             for (let index = 0; index < poo.length; index++) {
                 switch (poo[index][2]) {
@@ -1359,7 +1329,7 @@
                 // randomScene();
             }
 
-            if (bss[0] && poo[2] && obstacles[2]) {
+            if (bss[0] && poo[2] && obstacles[2]) { // if game loaded, run mechanics
                 distanceToCone = poo[0][0] - cameraModel.position.z + 150;
                 distanceToIce = poo[1][0] - cameraModel.position.z + 100;
                 distanceToBox = poo[2][0] - cameraModel.position.z + 110;
@@ -1368,27 +1338,27 @@
 
                 translationEnv(speed);
 
-                if (dragControls) {
+                if (dragControls) { 
                     if (changeView) {
-                        cameraMovement(secondCamPos);
 
-                        // controls.enabled ? controls.enabled = false : null;
+                        cameraMovement(secondCamPos);
                         !dragControls.enabled ? dragControls.enabled = true : null;
                         keepThemOnFloor();
                         snapObstacles();
+
                     } else {
-                        cameraMovement(originalCamPos);
-                        // console.log(originalCamPos);
-                        // camera.position.x == originalCamPos[0] ? cameraMovement(originalCamPos) : null;
-                        // !controls.enabled ? controls.enabled = true : null;
+
+                        cameraMovement(originalCamPos);                        
                         dragControls.enabled ? dragControls.enabled = false : null;
+
                     }
                 } else {
+
                     dragControls = new THREE.DragControls(obstacles, camera, renderer.domElement);
+
                 }
 
             }
-
 
             if (walk) {
                 // resetFlags();
