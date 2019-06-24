@@ -1092,9 +1092,11 @@
                 controls.enabled = false;
                 callOnce = false;
                 dragControls = new THREE.DragControls(obstacles, camera, renderer.domElement);
-
+                
                 originalCamPos = [camera.position.x, camera.position.y, camera.position.z,
                 camera.rotation.x, camera.rotation.y, camera.rotation.z];
+
+                cameraPos.y = 30;
             }
 
             if (endGame || !walk) return;
