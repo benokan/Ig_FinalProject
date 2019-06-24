@@ -1267,7 +1267,7 @@
                 originalCamPos = [camera.position.x, camera.position.y, camera.position.z,
                 camera.rotation.x, camera.rotation.y, camera.rotation.z];
 
-                cameraPos.y = 30;
+                cameraPos.y = 0;
             }
 
             if (endGame || !walk) return;
@@ -1297,11 +1297,13 @@
 
             if (notEmpty[0][1] == cameraPos.x - 31 || notEmpty[0][1] == cameraPos.x + 31 && notEmpty[0][0] != 9) {
 
-                if (distanceToCone < 0 && notEmpty[1][0] != 9) console.log("change lane", changeLane = true);
-                if (distanceToIce < 0 && distanceToIce > -50 && !slipStart) console.log("slip", slipStart = true);;
+                // if (distanceToCone < 0 && distanceToIce > 0) {
+                //     console.log("change lane", changeLane = true);
+                // }else 
+                if (distanceToIce < 0 && distanceToIce > -10 && !slipStart) console.log("slip", slipStart = true);;
             }
 
-            if (distanceToBox < 0 && distanceToBox > -50 && !jump && notEmpty[2][0] != 9) console.log("jump", jumpStart = true);
+            if (distanceToBox < 0 && distanceToBox > -10 && !jump && notEmpty[2][0] != 9) console.log("jump", jumpStart = true);
 
             // run
             cameraPos.z += speed / 5;
