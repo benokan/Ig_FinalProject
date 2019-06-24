@@ -1026,7 +1026,7 @@
 
                 scene.add(model);
                 poo.push([model.position.z - 240, model.position.x, 1]);
-                console.log(poo, 1);
+                // console.log(poo, 1);
             }
             )
         }
@@ -1058,7 +1058,7 @@
                     // dragControls.addEventListener('dragstart', function () { controls.enabled = false; });
                     // dragControls.addEventListener('dragend', function () { controls.enabled = true; });
                     poo.push([object.position.z - 240, object.position.x, 2]);
-                    console.log(poo, 2);
+                    // console.log(poo, 2);
                 }
             )
         }
@@ -1092,7 +1092,7 @@
                 // dragControls.addEventListener('dragend', function () { controls.enabled = true; });
 
                 poo.push([model.position.z - 250, model.position.x, 3]);
-                console.log(poo, 3);
+                // console.log(poo, 3);
             }
             )
         }
@@ -1111,7 +1111,7 @@
         function translationEnv(speed) {
 
             if (callOnce && obstacles) {
-
+                controls.enabled = false;
                 callOnce = false;
                 dragControls = new THREE.DragControls(obstacles, camera, renderer.domElement);
 
@@ -1141,7 +1141,6 @@
 
 
             if (notEmpty[1][1] == cameraPos.x - 31 || notEmpty[1][1] == cameraPos.x + 31 && notEmpty[1][0] != 9) {
-                // console.log("change lane!")
                 if (distanceToCone > 0 && !changeLane) console.log("change lane", changeLane = true);
             }
 
@@ -1185,12 +1184,10 @@
 
             if (changeView != onceCheck) {
                 if (once) return;
+
                 interpol = [];
                 for (let index = 0; index < nextPar.length; index++) {
-
                     interpol.push(nextPar[index] - savedCamPar[index]);
-
-
                 }
 
                 once = true;
@@ -1218,13 +1215,13 @@
                     savedCamPar[index] += interpol[index] / speedo;
                     camera.rotation.set(savedCamPar[3], savedCamPar[4], savedCamPar[5]);
                     camera.position.set(savedCamPar[0], savedCamPar[1], savedCamPar[2]);
-                    console.log("zıp that pussy");
+                    // console.log("zıp that pussy");
                 } else {
                     camera.rotation.set(nextPar[3], nextPar[4], nextPar[5]);
                     camera.position.set(nextPar[0], nextPar[1], nextPar[2]);
 
 
-                    console.log("geyy");
+                    // console.log("geyy");
                     once = false;
                     onceCheck = changeView;
                     
@@ -1249,18 +1246,18 @@
         function checkEmpty(obj, no, lane) {
 
             for (let i = 0; i < notEmpty.length; i++) {
-                if ((i != 2 && obj != i)) { // kutu değilse + // no i değilse
+                if (i == 2 || obj == 2) {
+                    if (notEmpty[i][0] == no) {
+                        return false;
+                    }
+                }else if ((i != 2 && obj != i)) { // kutu değilse + // no i değilse
                     if (notEmpty[i][1] == lane) {
                         if (notEmpty[i][0] == no) {
-                            console.log("heyy", i, no, lane);
+                            // console.log("heyy", i, no, lane);
                             return false;
                         }
                     }
-                } else { i == 2 } {
-                    if (notEmpty[2][0] == no) {
-                        return false;
-                    }
-                }
+                } 
             }
 
             return true
@@ -1375,7 +1372,7 @@
                     if (changeView) {
                         cameraMovement(secondCamPos);
 
-                        controls.enabled ? controls.enabled = false : null;
+                        // controls.enabled ? controls.enabled = false : null;
                         !dragControls.enabled ? dragControls.enabled = true : null;
                         keepThemOnFloor();
                         snapObstacles();
@@ -1383,7 +1380,7 @@
                         cameraMovement(originalCamPos);
                         // console.log(originalCamPos);
                         // camera.position.x == originalCamPos[0] ? cameraMovement(originalCamPos) : null;
-                        !controls.enabled ? controls.enabled = true : null;
+                        // !controls.enabled ? controls.enabled = true : null;
                         dragControls.enabled ? dragControls.enabled = false : null;
                     }
                 } else {
