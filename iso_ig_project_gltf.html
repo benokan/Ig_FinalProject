@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
-    <head>
+
+<head>
     <meta http-equiv="content-type" content="text/html;charset=utf-8" />
     <title>three.js webgl - FBX loader</title>
     <meta charset="utf-8">
@@ -16,12 +17,10 @@
     <script src="js/loaders/OBJLoader.js"></script>
     <script src="js/loaders/LoaderSupport.js"></script>
     <script src="js/loaders/MTLLoader.js"></script>
-
     <script src="js/loaders/OBJLoader2.js"></script>
-
-
-
     <script src="js/controls/OrbitControls.js"></script>
+    <script src="js/controls/DragControls.js"></script>
+    <script src="js/controls/TrackballControls.js"></script>
 
     <script src="js/WebGL.js"></script>
     <script src="js/libs/stats.min.js"></script>
@@ -38,13 +37,15 @@
         }
 
 
-
+        var gripPos = new Array();
         let flag = false;
 
         var container, stats, controls;
         var camera, scene, renderer, light;
 
         var clock = new THREE.Clock();
+
+        var dragControls;
 
         var mixer;                      // THREE.ActionMixer()
 
@@ -58,14 +59,16 @@
         // Calculate the difference of quaternions of each pose using these arrays.
         var poseFrom = [];
         var poseTo = [];
-        var frame = new Array();
-        var k = 1;
-        var cameraPos = new THREE.Vector3(0, 200, -500);
-        var distToilet = 5000; // distance to the toilet
+        var cameraPos = new THREE.Vector3(0, 150, -300);
+        var distToilet = 750; // distance to the toilet
+        distToilet = distToilet * 1.7;
+        var toilet;
+        var saveX = [[0], [0], [0]];
+        var saveZ = [[0], [0], [0]];
 
         var t_loader = new THREE.TextureLoader();
         var map = t_loader.load('models/obj/Rock/waterish.jpg');
-        var material = new THREE.MeshPhongMaterial({map: map});
+        var material = new THREE.MeshPhongMaterial({ map: map });
         var rootNode;
         var rightArm;
 
@@ -76,19 +79,19 @@
         var downloadFile = "frames.json";
 
         var fName;
-        var text; 
+        var text;
 
         var j1, j2;
         var loading = true;
 
         var idleCounter = 0;
         var inc = 0.0;
-        var idleFlags = {"flag01": true, "flag02": false, "flag03": false, "flag04": false, "flag05": false};
-        var jumpFlags = {"flag00": true, "flag01": false, "flag02": false, "flag03": false, "flag04": false};
-        var fallFlags = {"flag00": true, "flag01": false};
-        var dabFlags = {"flag01": true, "flag02": false};
-        var runFlags = {"flag00": true, "flag01": false, "flag02": false };
-        var slipFlags = {"flag00":true, "flag01": false, "flag02": false, "flag03": false};
+        var idleFlags = { "flag01": true, "flag02": false, "flag03": false, "flag04": false, "flag05": false };
+        var jumpFlags = { "flag00": true, "flag01": false, "flag02": false, "flag03": false, "flag04": false };
+        var fallFlags = { "flag00": true, "flag01": false };
+        var dabFlags = { "flag01": true, "flag02": false };
+        var runFlags = { "flag00": true, "flag01": false, "flag02": false };
+        var slipFlags = { "flag00": true, "flag01": false, "flag02": false, "flag03": false };
         var idleStart = true;
         var runStart = false;
         var jumpStart = false;
@@ -98,7 +101,15 @@
         var husoFlag = false;
         var wcFlag = false;
         var tHuso, tToilet;
+
+
         init();
+
+        addIce();
+        addCone();
+        addBox();
+
+
         animate();
 
 
@@ -128,13 +139,13 @@
             loadFile(fileName, jsonData);
 
 
-            if(jsonData["f1"]) {
-                setTimeout(function(){j1 = JSON.parse(jsonData["f1"])}, 100);
+            if (jsonData["f1"]) {
+                setTimeout(function () { j1 = JSON.parse(jsonData["f1"]) }, 100);
                 console.log("JSON loaded indeed.")
                 loading = false;
                 parsedPoses = parseJSONData(jsonData);
             }
-            if(jsonData["f2"]) {
+            if (jsonData["f2"]) {
                 j2 = JSON.parse(jsonData["f2"]);
             }
         }
@@ -148,9 +159,9 @@
                 // onLoad callback
                 function (data) {
                     // output the text to the console
-                    
+
                     jsonData = JSON.parse(data);
-                    
+
                 },
                 // onProgress callback
                 function (xhr) {
@@ -163,13 +174,14 @@
             );
         }
 
-        function resetFlags () {
-            idleFlags = {"flag01": true, "flag02": false, "flag03": false, "flag04": false, "flag05": false};
-            jumpFlags = {"flag00": true, "flag01": false, "flag02": false, "flag03": false, "flag04": false};
-            fallFlags = {"flag00": true, "flag01": false};
-            dabFlags = {"flag01": true, "flag02": false};
-            runFlags = {"flag00": true, "flag01": false, "flag02": false };
-            slipFlags = {"flag00":true, "flag01": false, "flag02": false, "flag03": false};
+
+        function resetFlags() {
+            idleFlags = { "flag01": true, "flag02": false, "flag03": false, "flag04": false, "flag05": false };
+            jumpFlags = { "flag00": true, "flag01": false, "flag02": false, "flag03": false, "flag04": false };
+            fallFlags = { "flag00": true, "flag01": false };
+            dabFlags = { "flag01": true, "flag02": false };
+            runFlags = { "flag00": true, "flag01": false, "flag02": false };
+            slipFlags = { "flag00": true, "flag01": false, "flag02": false, "flag03": false };
             idleStart = true;
             runStart = false;
             jumpStart = false;
@@ -179,6 +191,7 @@
             inc = 0;
             idleCounter = 0;
         }
+
         function init() {
             container = document.createElement('div');
             document.body.appendChild(container);
@@ -190,62 +203,66 @@
                 texture.repeat.set(1, 512);
             });
 
-            
+
             scene = new THREE.Scene();
             // scene.background = new THREE.Color(0xa0a0a0);
-            scene.background = new THREE.Color('black');
-
             // scene.fog = new THREE.Fog(0xa0a0a0, 200, 1000);
+            scene.background = new THREE.Color('black');
 
             cameraModel = new THREE.Scene(); // to move camera and player sync, parent node of them
             scene.add(cameraModel);
 
-            camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 1, 10000); 
+            camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 1, 10000);
             camera.position.set(cameraPos.x, cameraPos.y, cameraPos.z);
-            camera.rotation.y = Math.PI;
-            // camera.rotation._x = -1.4148447059229226;
-            // camera.rotation._y = 0.17807950832127517;
-            // camera.rotation._z = 0.8448773892010358;
-
+            // camera.rotation.y = Math.PI;
+            camera.rotation.z = 0;
             cameraModel.add(camera);
-            
+
+            gridCamera = new THREE.OrthographicCamera(window.innerWidth / - 2, window.innerWidth / 2, window.innerHeight / 2, window.innerHeight / - 2, -10000, 100000);
+            gridCamera.position.x = 0
+            gridCamera.position.y = 22300
+            gridCamera.position.z = 0
+
+            gridCamera.rotation.x = -1.6
+            gridCamera.rotation.y = 0
+            gridCamera.rotation.z = 0
+
+
+
+            scene.add(gridCamera);
+
             light = new THREE.HemisphereLight(0xffffff, 0x444444);
             light.position.set(100, 200, 0);
             scene.add(light);
 
-            light = new THREE.DirectionalLight(0xffffff);
-            light.position.set(0, 2000, 100);
-            light.castShadow = true;
-            light.shadow.camera.top = 180;
-            light.shadow.camera.bottom = - 100;
-            light.shadow.camera.left = - 120;
-            light.shadow.camera.right = 120;
+            // light = new THREE.DirectionalLight(0xffffff);
+            // light.position.set(0, 2000, 100);
+            // light.castShadow = true;
+            // light.shadow.camera.top = 180;
+            // light.shadow.camera.bottom = - 100;
+            // light.shadow.camera.left = - 120;
+            // light.shadow.camera.right = 120;
             // scene.add(light);
 
             // ground
             for (let index = -1; index <= 1; index += 2) {
 
                 floor = new THREE.Mesh(
-                    new THREE.PlaneGeometry(50, distToilet *2, 8, 8),
+                    new THREE.PlaneGeometry(50, distToilet - 200, 8, 8),
                     new THREE.MeshLambertMaterial({
                         map: grassTexture
                     }));
                 floor.rotation.x -= Math.PI / 2;
                 floor.position.x += index * 30;
                 floor.position.y -= 1;
+                floor.position.z = 670;
                 scene.add(floor);
             }
 
+            var streetLight;
 
-            // var grid = new THREE.GridHelper(2000, 20, 0x000000, 0x000000);
-            // grid.material.opacity = 0.2;
-            // grid.material.transparent = true;
-            // scene.add(grid);
-            var obj_loader = new THREE.OBJLoader();  
-            
-            var toilet; 
-            var streetLight;      
-            
+            var obj_loader = new THREE.OBJLoader();
+
             // load a resource
             obj_loader.load(
                 // resource URL
@@ -260,112 +277,111 @@
                     object.position.x = -10;
                     object.position.z = distToilet;
                     object.rotateOnAxis(new THREE.Vector3(0, 0, 1), Math.PI);
-                    
+
                     scene.add(object);
                     toilet = object;
                 }
-                );
-
+            );
 
             /// Lamba objesini MTL dosyasindaki configle ekleyince texturelariyla beraber geliyor.
             /// DIKKAT! Bunun icin html'e importlar yapmak gerekiyor.
             var lampPositionsZ = [1500, 2500, 3500];
 
-            
-            var objLoader = new THREE.OBJLoader2();  
+
+            var objLoader = new THREE.OBJLoader2();
             objLoader.loadMtl('models/obj/Street_Light/Lamp.mtl', null, (materials) => {
                 objLoader.setMaterials(materials);
-                        objLoader.load(
-                            'models/obj/Street_Light/Lamp.obj', (event) => {
-                                const root = event.detail.loaderRootNode;
-                                root.rotation.x = 180 * Math.PI/180;
-                            root.scale.x = 35;
-                            root.scale.y = 35;
-                            root.scale.z = 35;
-                            root.position.y = 0;
-                            root.position.x = 100;
-                            root.position.z = lampPositionsZ[0];
-                            root.rotateOnAxis(new THREE.Vector3(0, 0, 1), Math.PI);
-                            
-                            scene.add(root);
-                            // compute the box that contains all the stuff
-                            // from root and below
-                            const box = new THREE.Box3().setFromObject(root);
-                        
-                            const boxSize = box.getSize(new THREE.Vector3()).length();
-                            const boxCenter = box.getCenter(new THREE.Vector3());
-                            
-                            });
-                        });
+                objLoader.load(
+                    'models/obj/Street_Light/Lamp.obj', (event) => {
+                        const root = event.detail.loaderRootNode;
+                        root.rotation.x = 180 * Math.PI / 180;
+                        root.scale.x = 35;
+                        root.scale.y = 35;
+                        root.scale.z = 35;
+                        root.position.y = 0;
+                        root.position.x = 100;
+                        root.position.z = lampPositionsZ[0];
+                        root.rotateOnAxis(new THREE.Vector3(0, 0, 1), Math.PI);
 
-            var objLoader2 = new THREE.OBJLoader2();  
-                
+                        scene.add(root);
+                        // compute the box that contains all the stuff
+                        // from root and below
+                        const box = new THREE.Box3().setFromObject(root);
+
+                        const boxSize = box.getSize(new THREE.Vector3()).length();
+                        const boxCenter = box.getCenter(new THREE.Vector3());
+
+                    });
+            });
+
+            var objLoader2 = new THREE.OBJLoader2();
+
             objLoader2.loadMtl('models/obj/Street_Light/Lamp.mtl', null, (materials) => {
                 objLoader2.setMaterials(materials);
-                        objLoader2.load(
-                            'models/obj/Street_Light/Lamp.obj', (event) => {
-                                const root = event.detail.loaderRootNode;
-                                root.rotation.x = 180 * Math.PI/180;
-                            root.scale.x = 35;
-                            root.scale.y = 35;
-                            root.scale.z = 35;
-                            root.position.y = 0;
-                            root.position.x = 100;
-                            root.position.z = lampPositionsZ[1];
-                            root.rotateOnAxis(new THREE.Vector3(0, 0, 1), Math.PI);
-                            
-                            scene.add(root);
-                            // compute the box that contains all the stuff
-                            // from root and below
-                            const box = new THREE.Box3().setFromObject(root);
-                        
-                            const boxSize = box.getSize(new THREE.Vector3()).length();
-                            const boxCenter = box.getCenter(new THREE.Vector3());
-                            
-                            });
-                        });
-            var objLoader3 = new THREE.OBJLoader2();  
-            
+                objLoader2.load(
+                    'models/obj/Street_Light/Lamp.obj', (event) => {
+                        const root = event.detail.loaderRootNode;
+                        root.rotation.x = 180 * Math.PI / 180;
+                        root.scale.x = 35;
+                        root.scale.y = 35;
+                        root.scale.z = 35;
+                        root.position.y = 0;
+                        root.position.x = 100;
+                        root.position.z = lampPositionsZ[1];
+                        root.rotateOnAxis(new THREE.Vector3(0, 0, 1), Math.PI);
+
+                        scene.add(root);
+                        // compute the box that contains all the stuff
+                        // from root and below
+                        const box = new THREE.Box3().setFromObject(root);
+
+                        const boxSize = box.getSize(new THREE.Vector3()).length();
+                        const boxCenter = box.getCenter(new THREE.Vector3());
+
+                    });
+            });
+            var objLoader3 = new THREE.OBJLoader2();
+
             objLoader3.loadMtl('models/obj/Street_Light/Lamp.mtl', null, (materials) => {
                 objLoader3.setMaterials(materials);
-                        objLoader3.load(
-                            'models/obj/Street_Light/Lamp.obj', (event) => {
-                                const root = event.detail.loaderRootNode;
-                                root.rotation.x = 180 * Math.PI/180;
-                            root.scale.x = 35;
-                            root.scale.y = 35;
-                            root.scale.z = 35;
-                            root.position.y = 0;
-                            root.position.x = 100;
-                            root.position.z = lampPositionsZ[2];
-                            root.rotateOnAxis(new THREE.Vector3(0, 0, 1), Math.PI);
-                            
-                            scene.add(root);
-                            // compute the box that contains all the stuff
-                            // from root and below
-                            const box = new THREE.Box3().setFromObject(root);
-                        
-                            const boxSize = box.getSize(new THREE.Vector3()).length();
-                            const boxCenter = box.getCenter(new THREE.Vector3());
-                            
-                            });
-                });
+                objLoader3.load(
+                    'models/obj/Street_Light/Lamp.obj', (event) => {
+                        const root = event.detail.loaderRootNode;
+                        root.rotation.x = 180 * Math.PI / 180;
+                        root.scale.x = 35;
+                        root.scale.y = 35;
+                        root.scale.z = 35;
+                        root.position.y = 0;
+                        root.position.x = 100;
+                        root.position.z = lampPositionsZ[2];
+                        root.rotateOnAxis(new THREE.Vector3(0, 0, 1), Math.PI);
+
+                        scene.add(root);
+                        // compute the box that contains all the stuff
+                        // from root and below
+                        const box = new THREE.Box3().setFromObject(root);
+
+                        const boxSize = box.getSize(new THREE.Vector3()).length();
+                        const boxCenter = box.getCenter(new THREE.Vector3());
+
+                    });
+            });
 
 
             // const color = 0xFFFFFF;
             // const color = 0xFFC58F;  
-            const color = 0xffd700; 
+            const color = 0xffd700;
             const intensity = 1;
             const decay = 2;
-            const distanceLight = 800;   
-            const power = 10;     
-            var posX  = [65, 83, 75, 75];
-            
+            const distanceLight = 800;
+            const power = 10;
+            var posX = [65, 83, 75, 75];
+
             for (l in lampPositionsZ) {
-                var posZ  = [lampPositionsZ[l], lampPositionsZ[l], lampPositionsZ[l]+10, lampPositionsZ[l]-5];
+                var posZ = [lampPositionsZ[l], lampPositionsZ[l], lampPositionsZ[l] + 10, lampPositionsZ[l] - 5];
                 /// Lambanin etrafinda 4 tane isik. 
                 /// Sebep: bir isigi bir objenin icine koyunca etrafini aydinlatiyor ama objenin kendisi etkilenmiyor.
-                for (i=0; i<4; i++) {
+                for (i = 0; i < 4; i++) {
                     const lampLight = new THREE.PointLight(color, intensity);
                     lampLight.position.set(posX[i], 175, posZ[i]);
                     lampLight.power = power;
@@ -373,10 +389,12 @@
                     lampLight.distance = distanceLight;
                     scene.add(lampLight);
                     /// Point Light objelerini sahnede belirtmek icin yardimci yapi.
-                    const helper = new THREE.PointLightHelper(lampLight);
-                    scene.add(helper);
+                    // const helper = new THREE.PointLightHelper(lampLight);
+                    // scene.add(helper);
                 }
             }
+
+
             // model
             var loader = new THREE.GLTFLoader();
 
@@ -423,13 +441,7 @@
                     bss_quaternions.push(bss[key].quaternion);
                 }
 
-                //console.log(model);
-                bss[0].position.y = 1.0;
                 cameraModel.add(model);
-                // scene.add(model);
-
-                
-
 
                 var snapShotFeed = function () {
 
@@ -466,7 +478,7 @@
                     this.interpolate = function () {
                         flag = !flag;
                         if (!flag) fallFlags["flag00"] = true;
-                        console.log(flag);
+                        // console.log(flag);
                     }
 
                     this.addFrame = function () {
@@ -481,7 +493,7 @@
                         document.body.appendChild(link);
                         const blob = new Blob([JSON.stringify(jsonData)], { type: 'text/plain' });
                         const objectURL = URL.createObjectURL(blob);
-                        console.log(blob,objectURL);
+                        console.log(blob, objectURL);
                         link.href = objectURL;
                         link.href = URL.createObjectURL(blob);
                         link.download = downloadFile;
@@ -495,35 +507,35 @@
                         idleStart = true;
                     }
 
-                    
+
                     this.run = function () {
                         resetFlags();
                         runStart = true;
 
                     }
 
-                    
+
                     this.jump = function () {
                         resetFlags();
                         jumpStart = true;
 
                     }
 
-                    
+
                     this.slip = function () {
                         resetFlags();
                         slipStart = true;
 
                     }
 
-                    
+
                     this.fall = function () {
                         resetFlags();
                         fallStart = true;
 
                     }
 
-                    
+
                     this.dab = function () {
                         resetFlags();
                         dabStart = true;
@@ -532,7 +544,7 @@
 
                     this.stop = function () {
                         resetFlags();
-                      
+
                     }
 
                     this.ToggleAnimation = function () {
@@ -547,8 +559,6 @@
                     }
 
                     //#region InitGuiVariables
-
-
 
                     // Left Shoulder
                     this.ls_rotx = bss_rotations[4].x;
@@ -1016,6 +1026,7 @@
                 // folder19.add(snapData, 'setToFirst');
                 // folder19.add(snapData, 'interpolate');
 
+
                 var folder22 = panel.addFolder("Animations");
                 folder22.add(snapData, 'idle');
                 folder22.add(snapData, 'run');
@@ -1024,27 +1035,26 @@
                 folder22.add(snapData, 'fall');
                 folder22.add(snapData, 'dab');
                 folder22.add(snapData, 'stop');
-                
+
 
                 panel.add(snapData, "ToggleAnimation");
                 // var folder23 = panel.addFolder("Toggle Animation");
                 // folder23.add(snapData, 'StartRunning');
                 // folder23.add(snapData, 'StopRunning');
 
-                
+
                 var folder21 = panel.addFolder('Util');
                 folder21.add(snapData, 'fileName').onChange(setValue);
                 folder21.add(snapData, 'addFrame');
                 folder21.add(snapData, 'download');
-                
-                
+
+
                 function setValue() {
                     fName = snapData.fileName;
                 }
-                
-                
+
                 //#endregion
-                
+
 
             });
 
@@ -1058,8 +1068,8 @@
             container.appendChild(renderer.domElement);
 
             controls = new THREE.OrbitControls(camera, renderer.domElement);
-            // controls.target.set(100, 0, 500);
-            // controls.update();
+            controls.target.set(0, 100, 0);
+            controls.update();
 
             window.addEventListener('resize', onWindowResize, false);
 
@@ -1067,75 +1077,75 @@
             stats = new Stats();
             container.appendChild(stats.dom);
 
-        
-            
         } // end of init()
 
-        function textHuso (flag) {
-            
-            var loader = new THREE.FontLoader();
-				loader.load( 'fonts/gentilis_regular.typeface.json', function ( font ) {
-					var xMid;
-					var color = 0xffd700;//0x006699;
-					var matDark = new THREE.LineBasicMaterial( {
-						color: color,
-						side: THREE.DoubleSide
-					} );
-					var matLite = new THREE.MeshBasicMaterial( {
-						color: color,
-						transparent: true,
-						opacity: 1.0,
-						side: THREE.DoubleSide
-					} );
-                    var message = "Huso  [\ hü-'so\]";
-                    
-					var shapes = font.generateShapes( message, 100 );
-					var geometry = new THREE.ShapeBufferGeometry( shapes );
-					geometry.computeBoundingBox();
-					xMid = - 0.5 * ( geometry.boundingBox.max.x - geometry.boundingBox.min.x );
-					geometry.translate( xMid, 0, 0 );
-					// make shape ( N.B. edge view not visible )
-					tHuso = new THREE.Mesh( geometry, matDark );
-                    tHuso.position.z = 220;
-					tHuso.position.y = 20;                    
-                    scene.add( tHuso );
-				} ); 
-        }
 
-        function textToilet () {
+        function textHuso(flag) {
+
             var loader = new THREE.FontLoader();
-            loader.load( 'fonts/gentilis_regular.typeface.json', function ( font ) {
+            loader.load('fonts/gentilis_regular.typeface.json', function (font) {
                 var xMid;
                 var color = 0xffd700;//0x006699;
-                var matDark = new THREE.LineBasicMaterial( {
+                var matDark = new THREE.LineBasicMaterial({
                     color: color,
                     side: THREE.DoubleSide
-                } );
-                var matLite = new THREE.MeshBasicMaterial( {
+                });
+                var matLite = new THREE.MeshBasicMaterial({
                     color: color,
                     transparent: true,
                     opacity: 1.0,
                     side: THREE.DoubleSide
-                } );
-                var message = "Toilet  [\ 'tȯi-lət\]";
-                
-                var shapes = font.generateShapes( message, 100 );
-                var geometry = new THREE.ShapeBufferGeometry( shapes );
+                });
+                var message = "Huso  [\ hü-'so\]";
+
+                var shapes = font.generateShapes(message, 100);
+                var geometry = new THREE.ShapeBufferGeometry(shapes);
                 geometry.computeBoundingBox();
-                xMid = - 0.5 * ( geometry.boundingBox.max.x - geometry.boundingBox.min.x );
-                geometry.translate( xMid, 0, 0 );
+                xMid = - 0.5 * (geometry.boundingBox.max.x - geometry.boundingBox.min.x);
+                geometry.translate(xMid, 0, 0);
                 // make shape ( N.B. edge view not visible )
-                tToilet = new THREE.Mesh( geometry, matDark );
-                tToilet.position.z = 5200;
-                tToilet.position.y = 20;  
-                tToilet.rotation.y = Math.PI;                  
-                scene.add( tToilet );
-				} ); 
+                tHuso = new THREE.Mesh(geometry, matDark);
+                tHuso.position.z = 220;
+                tHuso.position.y = 20;
+                scene.add(tHuso);
+            });
         }
 
-        function removeNode (n) {
+        function textToilet() {
+            var loader = new THREE.FontLoader();
+            loader.load('fonts/gentilis_regular.typeface.json', function (font) {
+                var xMid;
+                var color = 0xffd700;//0x006699;
+                var matDark = new THREE.LineBasicMaterial({
+                    color: color,
+                    side: THREE.DoubleSide
+                });
+                var matLite = new THREE.MeshBasicMaterial({
+                    color: color,
+                    transparent: true,
+                    opacity: 1.0,
+                    side: THREE.DoubleSide
+                });
+                var message = "Toilet  [\ 'tȯi-lət\]";
+
+                var shapes = font.generateShapes(message, 100);
+                var geometry = new THREE.ShapeBufferGeometry(shapes);
+                geometry.computeBoundingBox();
+                xMid = - 0.5 * (geometry.boundingBox.max.x - geometry.boundingBox.min.x);
+                geometry.translate(xMid, 0, 0);
+                // make shape ( N.B. edge view not visible )
+                tToilet = new THREE.Mesh(geometry, matDark);
+                tToilet.position.z = 5200;
+                tToilet.position.y = 20;
+                tToilet.rotation.y = Math.PI;
+                scene.add(tToilet);
+            });
+        }
+
+        function removeNode(n) {
             scene.remove(n);
         }
+
 
         function onWindowResize() {
 
@@ -1147,99 +1157,73 @@
         }
 
 
-        var anim_template = function () {
-            for (i in poseTo) {
-                poseTo[i].normalize();
-                bss_quaternions[i].slerp(poseTo[i], .1);
-            }
-
-        }
-
-        function rev_template() {
-            for (i in poseFrom) {
-                poseFrom[i].normalize();
-                bss_quaternions[i].slerp(poseFrom[i], .1);
-            }
-
-        }
-
         // poo = Positions Of Obstacles = 
         // {[distance to obstacle, #lane, type of obstacle], []...}
         var poo = new Array(); // poo
-        var distanceToAdd = 1000; // constant - determines the min distance to put obstacles.
 
+        var obstacles = [];
 
-        function addSlipSign(direction, distance=0){ // returns 1
+        function addCone() { // returns 1
 
             // Slippery when wet Model...
             var loader = new THREE.GLTFLoader();
 
-            loader.load('models/gltf/SWW/sww.gltf', function (gltf) {
+            loader.load('models/gltf/Cone/cone.gltf', function (gltf) {
+
                 const model = gltf.scene;
-                
-                model.position.x = direction * -30;
-                model.rotation.y = 90 * Math.PI/180;
-                distanceToAdd += distance;
-                model.position.z = cameraModel.position.z - 70 + distanceToAdd;
-                
+                model.scale.x = model.scale.y = model.scale.z = 20;
+                model.position.x = 105;
+                model.position.y = 20;
+                model.position.z = distToilet / 2 + 55;
+                // model.position.x = 30;
+                // model.position.z = 550;
 
-                if (poo){ // check if its empty or not
-                    for (let index = 0; index < poo.length; index++) {
-                        if((poo[index][1] == (direction * -30) || poo[index][2] == 3) && poo[index][0] == model.position.z - 230){
-                            console.log("Not Empty");
-                            return;
-                        }                    
-                    }
-                }
+                model.rotation.y = 90 * Math.PI / 180;
 
-                poo.push([model.position.z - 230, model.position.x, 1]);
+                gltf.scene.traverse(function (model) {
+
+                    if (model.isMesh) obstacles.push(model);
+                });
+
                 scene.add(model);
-                console.log(poo);              
-                 
-                }
+                poo.push([model.position.z - 240, model.position.x, 1]);
+            }
             )
         }
+        var icePose;
 
-        function addIce(direction, distance=0){ // returns 2
+        function addIce() { // returns 2
             var obj_loader = new THREE.OBJLoader();
-            obj_loader.load(                
+            obj_loader.load(
                 'models/obj/Rock/Rock.obj',
 
-            
-
                 function (object) {
-
-
-                    object.scale.x = 25;
-                    object.scale.z = 25;
+                    object.scale.x = object.scale.y = object.scale.z = 25;
                     object.scale.y = 1;
                     object.position.y = .2;
-                    direction > 0 ? object.position.x = -60: object.position = 0;
+                    object.position.x = 140;
+                    // object.position.x = 5;
+                    object.position.z = distToilet / 2 + 30;
+                    // object.position.z = 685;
                     
-                    object.position.z = cameraModel.position.z + distanceToAdd + distance;
-                    object.traverse( function ( node ) {
-
-                    if ( node.isMesh ) node.material = material;
-
-
-                    } );
-                    if (poo){ // check if its empty or not
-                        for (let index = 0; index < poo.length; index++) {
-                            if((poo[index][1] == (direction * -30) || poo[index][2] == 3) && poo[index][0] == object.position.z - 300){ // check for ice and sign
-                                console.log("Not Empty");
-                                return;
-                            }
-                        }
-                    }
-
+                    object.rotation.y = 90 * Math.PI / 180;
+                    
+                    object.traverse(function (x) {
+                        
+                        if (x.isMesh) {
+                            x.material = material;
+                            obstacles.push(x);
+                        } 
+                        
+                    });
+                    
                     scene.add(object);
-                    poo.push([object.position.z, object.position.x + 30, 2]);            
-                    console.log(poo);
+                    poo.push([object.position.z - 240, object.position.x, 2]);
                 }
             )
         }
-        
-        function addBox(distance = 0){ // returns 3
+
+        function addBox() { // returns 3
             // Box Model...
             var box_loader = new THREE.GLTFLoader();
 
@@ -1250,165 +1234,331 @@
                 model.scale.y = 45;
                 model.scale.z = 45;
                 model.rotateOnAxis(new THREE.Vector3(0, 1, 0), Math.PI / 2);
-                model.position.x = 0;
+                model.position.x = 110;
                 model.position.y = 23;
-                model.position.z = cameraModel.position.z - 50 + distanceToAdd + distance;
+                model.position.z = distToilet / 2 + 120
+                // model.position.x = 0;
+                // model.position.z = 600;
 
-                if (poo){ // check if its empty or not
-                    for (let index = 0; index < poo.length; index++) {
-                        if(poo[index][0] == model.position.z){
-                            console.log("Not Empty");
-                            return;
-                        }                    
-                    }
-                }
+                gltf.scene.traverse(function (object) {
 
-                scene.add(model);                
-                poo.push([model.position.z , model.position.x, 3]);
-                console.log(poo);
-                }
+                    if (object.isMesh) obstacles.push(object);
+
+                });
+
+                scene.add(model);
+
+                poo.push([model.position.z - 250, model.position.x, 3]);
+            }
             )
         }
+
         var changeLane = false;
-        var jump = false;
+
         var walk = false;
+        var jump = false;
+        var slip = false;
         var endGame = false;
         var inpol = 1;
         var callOnce = true;
-        function translationEnv(speed) {
+        var originalCamPos;
+        var secondCamPos = [-330, 850, 675, -90 * Math.PI / 180, -30 * Math.PI / 180, -90 * Math.PI / 180];
 
-            if(endGame) return;
-
-            if(callOnce){
+        function translationEnv(speed) { // to translate model, camera - the general game logic
+            if (callOnce && obstacles) {
+                controls.enabled = false;
                 callOnce = false;
-                cameraPos.x = 30;
+                dragControls = new THREE.DragControls(obstacles, camera, renderer.domElement);
 
-                cameraPos.y = 0;
-                cameraPos.z = 550;
-                camera.rotation.x = 0.1;                
+                originalCamPos = [camera.position.x, camera.position.y, camera.position.z,
+                camera.rotation.x, camera.rotation.y, camera.rotation.z];
+
+                cameraPos.y = -2;
             }
 
-            for (let index = 0; index < poo.length; index++) {
+            if (endGame || !walk) return;
 
-                if(poo[index] && poo[index][0] -cameraPos.z > 0){
-                    
-                    if (poo[1]){
-                        if(poo[0][2] == 2 && poo[1][2] == 3) {
-                            
-                            if(Math.abs(poo[1][2] - Math.abs(poo[0][2])) <= 1) {
-                                if(poo[0][0] - cameraPos.z < 20 && cameraPos.x == poo[0][1]){
-                                    // if (walk) resetFlags();
-                                    console.log("endgame"); 
-                                    walk = false;
-                                    fallStart = true;
-                                    endGame = true;
-                                }
-                            }
-                        }
-                        for (let index = 0; index < poo.length; index++) {
-                            if(poo[index][1] == cameraPos.x && poo[index][2] == 1){
-                                // console.log("change lane!")
-                                changeLane = true;
-                            }                                                                    
-                        }
-                    }
-                        for (let index = 0; index < poo.length; index++) {
-                            if(poo[index][1] == cameraPos.x && poo[index][2] == 1){
-                                // console.log("change lane!")
-                                changeLane = true;
-                            }                                                                    
-                        }
-                        switch(poo[0][2]){
-                            case 1: // slippery sign - change lane (-30, 30)
-                                break;
-                            case 2: // ice - jump
-                                if((poo[0][0] -cameraPos.z-100) <10){
-                                    // console.log("'ice' jump!")
-                                    jump = true;
-                                    // resetFlags();
-                                    slipStart = true;
-                                }
-                                break;
-                            case 3: // box - jump
-                                if ((poo[0][0]-cameraPos.z-100) < 10){
-                                    jump = true;
-                                    jumpStart = true;
-                                }
-                                break;
-                        }                     
-                }
-                poo[index][0] -cameraPos.z < 0 ? poo.shift(): 0 ;
-            }
 
-            
 
-            // --> Walk;
-            if(cameraPos.z < distToilet -100 && walk){
-
-                // run
-                cameraPos.z += speed/5                
-
-                // --> Change lane;
-                // Right Lane = -30
-                // Left Lane =  30
-                if (cameraPos.x == 30 && changeLane) { // go right
-                    changeLane = false;
-                    inpol = (2 * -30) / speed;
-                } else if (cameraPos.x == -30 && changeLane) { // go left
-                    changeLane = false;
-                    inpol = (2 * 30) / speed;
-                }else if (cameraPos.x == -30 || cameraPos.x == 30){ // don't change
-                    inpol = 0;                
-                }
-                cameraPos.x += inpol;
-                // --> End of "Change lane".
-
-            }else if (cameraPos.z >= distToilet -300){
-                if (walk) resetFlags();
+            if (distanceToEnd < 0) {
                 walk = false;
-                idleStart = false;
-                dabStart = true;   
-                console.log("Congratz");
-            }else{
-                // console.log("didnt start yet");
+                dabStart = true;
+                console.log("Game Over", endGame = true);
+                return;
             }
-            // --> End of "Walk".
-            
-            cameraModel.position.set(cameraPos.x, cameraPos.y, cameraPos.z);            
-            
+
+            if (notEmpty[0][0] == notEmpty[2][0] + 1) { // if ice just before box
+
+                if (notEmpty[0][1] == cameraPos.x - 31 || notEmpty[0][1] == cameraPos.x + 31) { // if player and ice are in same lane
+
+                    if (distanceToBox < -20 && !endGame) {
+                        // walk = false;
+                        fallStart = true;
+                        console.log("endGame", endGame = true);
+                    }
+                }
+            }
+
+
+            if (notEmpty[1][1] == cameraPos.x - 31 || notEmpty[1][1] == cameraPos.x + 31 && notEmpty[1][0] != 9) {
+                if (distanceToCone > 0 && !changeLane) console.log("change lane", changeLane = true);
+            }
+
+            if (notEmpty[0][1] == cameraPos.x - 31 || notEmpty[0][1] == cameraPos.x + 31 && notEmpty[0][0] != 9) {
+
+                if (distanceToIce < 30 && distanceToIce > 0 && !slipStart) {console.log("slip", slipStart = true); }
+            }
+
+            if (distanceToBox < 20 && distanceToBox > -5  && !jumpStart && !slipStart && notEmpty[2][0] != 9) console.log("jump", jumpStart = true);
+
+            // run
+            cameraPos.z += speed / 5;
+
+            // --> Change lane;
+            // Right Lane = -30
+            // Left Lane =  30
+
+            if (cameraPos.x == 30 && changeLane) { // go right
+                changeLane = false;
+                inpol = (2 * -30) / speed;
+            } else if (cameraPos.x == -30 && changeLane) { // go left
+                changeLane = false;
+                inpol = (2 * 30) / speed;
+            } else if (cameraPos.x == -30 || cameraPos.x == 30) { // don't change
+                inpol = 0;
+            }
+            cameraPos.x += inpol;
+
+            cameraModel.position.set(cameraPos.x, cameraPos.y, cameraPos.z);
+
+        }
+
+        var changeView = false;
+        var interpol = [];
+        var savedCamPar = [];
+        var nextPar = [];
+        var once = false;
+        var onceCheck = false;
+
+        function placeObstacles() { // save the first position and rotation to interpolate
+
+            if (changeView != onceCheck) {
+                if (once) return;
+
+                interpol = [];
+                for (let index = 0; index < nextPar.length; index++) {
+                    interpol.push(nextPar[index] - savedCamPar[index]);
+                }
+
+                once = true;
+            }
+        }
+
+
+
+        function cameraMovement(parameters) { // move camera to target position and rotation
+            nextPar = parameters;
+            savedCamPar = [camera.position.x, camera.position.y, camera.position.z,
+            camera.rotation.x, camera.rotation.y, camera.rotation.z];
+
+            placeObstacles();
+
+            var speedo = 100;
+
+            for (let index = 0; index < savedCamPar.length; index++) {
+
+                if ((interpol[index] > 0 && nextPar[index] - savedCamPar[index] >= interpol[index] / speedo) ||
+                    (interpol[index] < 0 && nextPar[index] - savedCamPar[index] <= interpol[index] / speedo)) {
+
+                    savedCamPar[index] += interpol[index] / speedo;
+                    camera.rotation.set(savedCamPar[3], savedCamPar[4], savedCamPar[5]);
+                    camera.position.set(savedCamPar[0], savedCamPar[1], savedCamPar[2]);
+                } else {
+                    camera.rotation.set(nextPar[3], nextPar[4], nextPar[5]);
+                    camera.position.set(nextPar[0], nextPar[1], nextPar[2]);
+
+
+                    once = false;
+                    onceCheck = changeView;
+
+                }
+
+            }
+
+
         }
 
         var speed = 40;
 
-        function randomScene () {
-            addIce(0, 1775);
-            // addIce(0, 1650);
-            // addIce(0, 1700);
-            // addIce(0, 1750);
-            addBox(1300);
+        var changeCam = false;
+        var rePos = true;
+        // var notEmpty = [[2, 1], [1, -1], [1, 1]];
+        var notEmpty = [[9, 9], [9, 9], [9, 9]];
 
+        var iceP;
+        function checkEmpty(obj, no, lane) { // check if there is any obstacles in target position
+
+            for (let i = 0; i < notEmpty.length; i++) {
+                if (i == 2 || obj == 2) {
+                    if (notEmpty[i][0] == no) {
+                        return false;
+                    }
+                } else if ((i != 2 && obj != i)) {
+                    if (notEmpty[i][1] == lane) {
+                        if (notEmpty[i][0] == no) {
+                            return false;
+                        }
+                    }
+                }
+            }
+
+            return true
+        }
+        var gridPos = [[2.5, -4.1, -2.89, -5.29],
+            [3.1, -5.29, -3.69, -6.67],
+            [1.4, -2.45]];
+        function snapObstacles() { // snap obstacles to the nearest grid position
+
+            if (rePos) return;
+
+            // gridPos = [[2.5, -4.1, -2.89, -5.29],
+            // [3.1, -5.29, -3.69, -6.67],
+            // [1.4, -2.45]];
+
+            var limits = [[-7.6, 2.6],
+            [-6.3, 6.3],
+            [-1.5, 4.2]];
+
+
+
+            // Repositioning of dragged obstacles
+
+            for (let i = 0; i < obstacles.length; i++) {
+
+                var diff = obstacles[i].position.x % gridPos[i][0];
+                var test = obstacles[i].position.x - diff; // limit test
+                var a = Math.abs(limits[i][0]) + limits[i][1];
+                var b = test + Math.abs(limits[i][0]);
+                var no = Math.ceil((b / a) * 5);
+               
+                var lane = obstacles[i].position.z > gridPos[i][1] ? notEmpty[i][1] = -1 : notEmpty[i][1] = 1;
+                if (checkEmpty(i, no, lane)) {
+                    if (obstacles[i].position.x != saveX[i]) {
+                        if (limits[i][0] < test && limits[i][1] > test) {
+                            notEmpty[i][0] = no;
+                            obstacles[i].position.x -= diff;
+                            saveX[i] = obstacles[i].position.x;
+                        } else {
+
+
+                            obstacles[i].position.x = saveX[i];
+                            obstacles[i].position.z = saveZ[i];
+                            return;
+                        }
+                    }
+
+                    if (obstacles[i].position.z != saveZ[i]) {
+
+                        if (i == 2) {
+                            obstacles[i].position.z = gridPos[i][1];
+                        } else {
+                            var diff;
+                            obstacles[i].position.z > gridPos[i][1] ? diff = gridPos[i][2] : diff = gridPos[i][3];
+                            obstacles[i].position.z = diff;
+                        }
+
+                        saveZ[i] = obstacles[i].position.z;
+                    }
+
+                } else {
+                    obstacles[i].position.x = saveX[i];
+                    obstacles[i].position.z = saveZ[i];
+                }
+
+            }
+            keepThemOnFloor();
+            rePos = true;
 
         }
 
+        function keepThemOnFloor() { // limit dragging operation in 2d
+
+
+            for (let index = 0; index < poo.length; index++) {
+                switch (poo[index][2]) {
+                    case 1: // cone
+                        obstacles[1].position.y = 0;
+                        break;
+                    case 2: // ice
+                        obstacles[0].position.y = 0.2;
+                        break;
+                    case 3: // box
+                        obstacles[2].position.y = 0;
+                        break;
+                }
+            }
+            rePos = false;
+        }
+
+
+
         function animate() {
-            
+
             requestAnimationFrame(animate);
             if (loading) {
                 loadJSON();
-                randomScene();
+                // randomScene();
             }
 
-            if (bss[0])
+            if (bss[0] && poo[2] && obstacles[2]) { // if game loaded, run mechanics
+
+                // distanceToCone = ( poo[0][0] + (((3- notEmpty[1][0])* gridPos[1][0])* (105-30)/3.69)) - cameraModel.position.z + 250;
+                // distanceToIce = ( poo[1][0] + (((4 - notEmpty[0][0])* gridPos[0][0])* (140-65)/2.89)) - cameraModel.position.z + 170; //100
+                // distanceToBox = ( poo[2][0] + (((2 - notEmpty[2][0])* gridPos[2][0])* 110/2.45)) - cameraModel.position.z + 180; // 110/2.24
+                
+                distanceToCone = ( poo[0][0] + (((3- notEmpty[1][0])* 63))) - cameraModel.position.z + 250;
+                distanceToIce = ( poo[1][0] + (((4 - notEmpty[0][0])* 63))) - cameraModel.position.z + 170; //100
+                distanceToBox = ( poo[2][0] + (((2 - notEmpty[2][0])* 63))) - cameraModel.position.z + 180; // 110/2.24
+                distanceToEnd = toilet.position.z - cameraModel.position.z - 100;
+
+                // distanceToIce < 0 ? walk = false: 0;
+
                 translationEnv(speed);
 
-            if (walk){
+                if (dragControls) {  
+                    if (changeView) {
+
+                        cameraMovement(secondCamPos);
+                        !dragControls.enabled ? dragControls.enabled = true : null;
+                        controls.enabled ? controls.enabled = false: null;
+                        keepThemOnFloor();
+                        snapObstacles();
+
+                    } else {
+
+                        // cameraMovement(originalCamPos);
+                        dragControls.enabled ? dragControls.enabled = false : null;
+                        !controls.enabled ? controls.enabled = true: null;
+
+
+                    }
+                } else {
+
+                    dragControls = new THREE.DragControls(obstacles, camera, renderer.domElement);
+
+                }
+
+            }
+
+
+            if (walk) {
                 idleStart = false;
-                runStart = true;            
+                runStart = true;
             }
             else runStart = false;
-            if (!husoFlag){
-            textHuso(husoFlag);
-            husoFlag = true;    
+            if (!husoFlag) {
+                // textHuso(husoFlag);
+                husoFlag = true;
             }
             if (idleStart) {
                 var anim = idleAnimation(idleFlags, parsedPoses, idleCounter, inc);
@@ -1416,35 +1566,32 @@
                 idleCounter = anim[1];
             }
             else if (jumpStart) {
-                var anim  = jumpAnimation(jumpStart, walk, speed, jumpFlags, parsedPoses, inc);
+                var anim = jumpAnimation(jumpStart, speed, jumpFlags, parsedPoses, inc);
                 inc = anim[0];
                 jumpStart = anim[1];
-                walk = anim[2];
-                speed = anim[3];
-                cameraPos.z += speed/4;
-                if (walk) resetFlags();
+                speed = anim[2];
+                // cameraPos.z += speed/4;
             }
-            else if (slipStart) {
-                var anim = slipAnimation(slipStart, walk, slipFlags, parsedPoses, inc);
+            else if (slipStart) {  
+                var anim = slipAnimation(slipStart, slipFlags, parsedPoses, inc);
                 inc = anim[0];
                 slipStart = anim[1];
-                walk = anim[2];
-                cameraPos.z += speed/20;
+                cameraPos.z -= speed / 7;
+
             }
             else if (fallStart) {
-                cameraModel.position.z += speed/15;
+                if (fallFlags.flag01) cameraModel.position.z += speed / 6;
                 cameraModel.position.y += -1.0;
 
                 var anim = fallAnimation(fallStart, fallFlags, parsedPoses, inc);
                 inc = anim[0];
                 fallStart = anim[1];
-                if (!fallStart) endGame = true; console.log("end");
                 walk = false;
-                
+
             }
             else if (dabStart) inc = dabAnimation(dabFlags, parsedPoses, inc);
-                
-            else if (runStart) {inc = runAnimation(runFlags, parsedPoses, inc);}
+
+            else if (runStart) { inc = runAnimation(runFlags, parsedPoses, inc); }
 
 
             const t = clock.getElapsedTime();
@@ -1454,11 +1601,10 @@
             if (mixer) {
                 mixer.update(delta);
             }
-            // controls.target.set(0, -200, -500);
-            // controls.update();
             renderer.render(scene, camera);
 
             stats.update();
+
 
         }
 
@@ -1467,4 +1613,4 @@
 
 </body>
 
-</html>text
+</html>
