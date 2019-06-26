@@ -1,0 +1,247 @@
+body {
+	margin: 0;
+	background-color: #000;
+	color: #fff;
+	font-family: Monospace;
+	font-size: 13px;
+	line-height: 24px;
+}
+
+@font-face {
+	font-family: arcade;
+	src: url('fonts/ttf/ARCADECLASSIC.TTF'); /* IE9 Compat Modes */
+
+  }
+
+a {
+	color: #ff0;
+	text-decoration: none;
+}
+
+a:hover {
+	text-decoration: underline;
+}
+
+#loading-screen {
+	position: absolute;
+	z-index: 2;
+	top: 0;
+	left: 0;
+	width: 100%;
+	height: 100%;
+	background-color: #000000;
+	opacity: 1;
+ 	transition: 1s opacity;
+}
+
+#loading-screen.fade-out {
+	opacity: 0;
+	display:none;
+}
+
+#loader {
+    display: block;
+    position: relative;
+    left: 50%;
+    top: 50%;
+    width: 150px;
+    height: 150px;
+    margin: -75px 0 0 -75px;
+    border-radius: 50%;
+    border: 3px solid transparent;
+    border-top-color: rgb(255, 215, 0);
+    -webkit-animation: spin 2s linear infinite;
+    animation: spin 2s linear infinite;
+}
+#loader:before {
+    content: "";
+    position: absolute;
+    top: 5px;
+    left: 5px;
+    right: 5px;
+    bottom: 5px;
+    border-radius: 50%;
+    border: 3px solid transparent;
+    border-top-color: rgb(255, 215, 0);
+    -webkit-animation: spin 3s linear infinite;
+    animation: spin 3s linear infinite;
+}
+#loader:after {
+    content: "";
+    position: absolute;
+    top: 15px;
+    left: 15px;
+    right: 15px;
+    bottom: 15px;
+    border-radius: 50%;
+    border: 3px solid transparent;
+    border-top-color: rgb(255, 215, 0);
+    -webkit-animation: spin 1.5s linear infinite;
+    animation: spin 1.5s linear infinite;
+}
+@-webkit-keyframes spin {
+    0%   {
+        -webkit-transform: rotate(0deg);
+        -ms-transform: rotate(0deg);
+        transform: rotate(0deg);
+    }
+    100% {
+        -webkit-transform: rotate(360deg);
+        -ms-transform: rotate(360deg);
+        transform: rotate(360deg);
+    }
+}
+@keyframes spin {
+    0%   {
+        -webkit-transform: rotate(0deg);
+        -ms-transform: rotate(0deg);
+        transform: rotate(0deg);
+    }
+    100% {
+        -webkit-transform: rotate(360deg);
+        -ms-transform: rotate(360deg);
+        transform: rotate(360deg);
+    }
+}
+
+
+canvas {
+	display: block;
+}
+
+#info {
+	position: absolute;
+	top: 0px;
+	width: 100%;
+	padding: 10px;
+	box-sizing: border-box;
+	text-align: center;
+	z-index: 1; /* TODO Solve this in HTML */
+}
+
+.dg.ac {
+	z-index: 2 !important; /* TODO Solve this in HTML */
+}
+
+button {
+	font-family: arcade;
+	cursor: pointer;
+	text-transform: uppercase;
+	display: block;
+	background: none;
+	padding:none;
+	border-style:none;
+	font-size: 20px;
+	color: #ff0;
+}
+
+button:hover{
+	color: rgb(255, 166, 0);
+}
+.center-div {
+	position: absolute;
+	top: 18%;
+	left: 47%;
+}
+
+.bottom-div {
+	position: absolute;
+	top: 88%;
+	left: 47%;
+}
+
+.left-text-div {
+	font-family: arcade; 
+	display:block;
+	position: absolute;
+	top: 18%;
+	left: 2%;
+	text-transform: uppercase;
+	color: rgb(47, 134, 30);
+	font-size: 24px;
+
+}
+
+#changeField{
+	text-transform: uppercase;
+	display: block;
+	background: none;
+	padding:none;
+	border-style:none;
+	font-size: 16px;
+	color: #ff0;
+}
+
+.button-ready{
+	position: absolute;
+	text-transform: uppercase;
+	display: block;
+	background: none;
+	padding:none;
+	border-style:none;
+	font-size: 26px;
+	color: #ff0;
+	visibility:hidden;
+	left: 48px;
+}
+
+.button-ready2{
+	position: absolute;
+	text-transform: uppercase;
+	display: block;
+	background: none;
+	padding:none;
+	border-style:none;
+	font-size: 26px;
+	color: #ff0;
+	visibility:hidden;
+	left: 48px;
+}
+
+.play-again{
+	position: absolute;
+	text-transform: uppercase;
+	display: block;
+	background: none;
+	padding:none;
+	border-style:none;
+	font-size: 16px;
+	color: #ff0;
+	visibility:hidden;
+	left: 20px;
+}
+
+h1 {
+	position: relative;
+	text-transform: uppercase;
+	letter-spacing: 6px;
+	font-size: 16px;
+	font-weight: 900;
+	text-decoration: none;
+	color: white;
+	display: inline-block;
+	background-size: 120% 100%;
+	-webkit-background-clip: text;
+	-webkit-text-fill-color: transparent;
+	-moz-background-clip: text;
+	-moz-text-fill-color: transparent;
+	-ms-background-clip: text;
+	-ms-text-fill-color: transparent;
+	background-clip: text;
+	text-fill-color: transparent;
+	background-image: linear-gradient(45deg, 
+					  #e0ee61, 
+					  rgb(196, 163, 54),
+					  rgb(247, 151, 26),
+					  rgb(202, 116, 17));
+	animation: 1.5s shake infinite alternate;
+  }
+  
+@keyframes shake {
+	0% { transform: skewX(-30deg); }
+	5% { transform: skewX(30deg); }
+	10% { transform: skewX(-15deg); }
+	15% { transform: skewX(15deg); }
+	20% { transform: skewX(0deg); }
+	100% { transform: skewX(0deg); }  
+  }
